@@ -6,7 +6,7 @@ interface RuleResult { rule_id: string; passed: boolean; severity: string; messa
 interface ScoreBreakdown { mandatory_fit: number; experience_depth: number; skill_match: number; final_score: number; [key:string]: number }
 interface ScreeningResponse { recommendation: string; hard_fail: boolean; rule_results: RuleResult[]; scores: ScoreBreakdown; explanation: string }
 
-const API_URL = "http://localhost:8000"
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
 export default function App() {
   const [phase, setPhase] = useState<'INGEST' | 'REVIEW' | 'RESULT'>('INGEST')
