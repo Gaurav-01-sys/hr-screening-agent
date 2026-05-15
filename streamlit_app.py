@@ -31,6 +31,7 @@ Base.metadata.create_all(bind=engine)
 
 
 def _sample_to_session() -> None:
+    st.session_state["phase"] = "REVIEW"
     sample = build_sample_request()
     st.session_state["candidate_id"] = sample.candidate.candidate_id
     st.session_state["full_name"] = sample.candidate.full_name or ""
@@ -78,6 +79,7 @@ def _sample_to_session() -> None:
 
 
 def _blank_session() -> None:
+    st.session_state["phase"] = "INGEST"
     st.session_state["candidate_id"] = "cand-001"
     st.session_state["full_name"] = ""
     st.session_state["total_experience_months"] = 0
@@ -115,6 +117,8 @@ def _blank_session() -> None:
 
 
 def _ensure_session() -> None:
+    if "phase" not in st.session_state:
+        st.session_state["phase"] = "INGEST"
     if "candidate_id" not in st.session_state:
         _sample_to_session()
 
@@ -440,8 +444,23 @@ st.title("HR Screening Workbench")
 st.caption("Resume/JD screening with human verification, mandatory rules, and deterministic scoring.")
 
 _ensure_session()
+phase = st.session_state["phase"]
 
-with st.expander("Source Documents", expanded=False):
+with st.sidebar:
+    st.header("Session")
+    if st.button("Load Sample Case", use_container_width=True):
+        _sample_to_session()
+        st.rerun()
+    if st.button("Reset Blank Form", use_container_width=True):
+        _blank_session()
+        st.rerun()
+    st.markdown(
+        "Use the editable tables to simulate extracted resume facts, human review corrections, job requirements, and mandatory checks."
+    )
+
+if phase == "INGEST":
+    st.header("Phase 1: Ingest Documents")
+    st.markdown("Upload or paste the Candidate's Resume and the Job Description, then use AI to extract the data.")
     resume_upload = st.file_uploader("Upload Resume/CV", type=["pdf", "docx"], key="resume_upload")
     jd_upload = st.file_uploader("Upload Job Description", type=["pdf", "docx"], key="jd_upload")
     _sync_uploaded_text(
@@ -475,7 +494,7 @@ with st.expander("Source Documents", expanded=False):
         st.success(f"Groq configured. Model: {GROQ_MODEL}")
     else:
         st.warning("Groq is not configured. Add GROQ_API_KEY to your .env file.")
-    if st.button("Extract With Groq", use_container_width=True, disabled=not groq_is_configured()):
+    if st.button("Extract With Groq", use_container_width=True, disabled=not groq_is_configured(), type="primary"):
         if not st.session_state["resume_text"].strip() or not st.session_state["jd_text"].strip():
             st.error("Resume Text and JD Text are required for Groq extraction.")
         else:
@@ -486,104 +505,114 @@ with st.expander("Source Documents", expanded=False):
                     mandatory_rule_notes=st.session_state["mandatory_rule_notes"],
                 )
             _request_to_session(extracted)
+            st.session_state["phase"] = "REVIEW"
             st.rerun()
-    st.info(
-        "Current flow: upload or paste resume/JD text, let Groq draft the extracted structure, then verify and correct it in the review tables before screening."
-    )
 
-with st.sidebar:
-    st.header("Session")
-    if st.button("Load Sample Case", use_container_width=True):
-        _sample_to_session()
-        st.rerun()
-    if st.button("Reset Blank Form", use_container_width=True):
+elif phase == "REVIEW":
+    st.header("Phase 2: Human-in-the-Loop Review")
+    st.markdown("Verify the AI-extracted data. You can directly edit the skill months or provide human overrides in the review queue before running the final screening rules.")
+    left_column, right_column = st.columns([1.1, 0.9])
+
+    with left_column:
+        st.subheader("Candidate")
+        st.text_input("Candidate ID", key="candidate_id")
+        st.text_input("Full Name", key="full_name")
+        st.number_input("Total Experience (months)", min_value=0, step=1, key="total_experience_months")
+
+        st.subheader("Extracted Skill Evidence")
+        skills_rows = st.data_editor(
+            st.session_state["skills_rows"],
+            key="skills_editor",
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "skill": st.column_config.TextColumn("Skill"),
+                "months": st.column_config.NumberColumn("Months", min_value=0, step=1),
+                "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
+                "page": st.column_config.NumberColumn("Page", min_value=1, step=1),
+                "confidence": st.column_config.NumberColumn("Confidence", min_value=0.0, max_value=1.0, step=0.01),
+            },
+        )
+
+        st.subheader("Human Review Queue")
+        review_rows = st.data_editor(
+            st.session_state["review_rows"],
+            key="review_editor",
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "name": st.column_config.TextColumn("Field Name"),
+                "ai_value": st.column_config.TextColumn("AI Value"),
+                "human_value": st.column_config.TextColumn("Human Value"),
+                "review_status": st.column_config.SelectboxColumn(
+                    "Review Status",
+                    options=[status.value for status in ReviewStatus],
+                ),
+                "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
+                "page": st.column_config.NumberColumn("Page", min_value=1, step=1),
+                "confidence": st.column_config.NumberColumn("Confidence", min_value=0.0, max_value=1.0, step=0.01),
+            },
+        )
+
+    with right_column:
+        st.subheader("Job Description")
+        st.text_input("Role Title", key="role_title")
+        st.number_input(
+            "Minimum Total Experience (months)",
+            min_value=0,
+            step=1,
+            key="min_total_experience_months",
+        )
+        st.text_area("Mandatory Skills (comma separated)", key="mandatory_skills", height=80)
+        st.text_area("Preferred Skills (comma separated)", key="preferred_skills", height=80)
+        st.text_area("Required Domains (comma separated)", key="required_domains", height=80)
+
+        st.subheader("Mandatory Rules")
+        rules_rows = st.data_editor(
+            st.session_state["rules_rows"],
+            key="rules_editor",
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "id": st.column_config.TextColumn("Rule ID"),
+                "type": st.column_config.SelectboxColumn(
+                    "Rule Type",
+                    options=["skill_min_months", "skill_required", "total_experience_min_months"],
+                ),
+                "severity": st.column_config.SelectboxColumn(
+                    "Severity",
+                    options=[severity.value for severity in Severity],
+                ),
+                "weight": st.column_config.NumberColumn("Weight", min_value=0, step=1),
+                "skill": st.column_config.TextColumn("Skill"),
+                "min_months": st.column_config.NumberColumn("Min Months", min_value=0, step=1),
+                "domain": st.column_config.TextColumn("Domain"),
+                "expected_value": st.column_config.TextColumn("Expected Value"),
+            },
+        )
+
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Back to Ingest", use_container_width=True):
+            st.session_state["phase"] = "INGEST"
+            st.rerun()
+    with col2:
+        if st.button("Run Final Screening", type="primary", use_container_width=True):
+            payload = _build_request(skills_rows, review_rows, rules_rows)
+            st.session_state["screening_payload"] = payload
+            st.session_state["phase"] = "RESULT"
+            st.rerun()
+
+elif phase == "RESULT":
+    st.header("Phase 3: Screening Result")
+    payload = st.session_state.get("screening_payload")
+    if payload:
+        _render_results(payload)
+    else:
+        st.error("No screening data found. Please start over.")
+    
+    st.markdown("---")
+    if st.button("Start New Screening", use_container_width=True):
         _blank_session()
         st.rerun()
-    st.markdown(
-        "Use the editable tables to simulate extracted resume facts, human review corrections, job requirements, and mandatory checks."
-    )
-
-left_column, right_column = st.columns([1.1, 0.9])
-
-with left_column:
-    st.subheader("Candidate")
-    st.text_input("Candidate ID", key="candidate_id")
-    st.text_input("Full Name", key="full_name")
-    st.number_input("Total Experience (months)", min_value=0, step=1, key="total_experience_months")
-
-    st.subheader("Extracted Skill Evidence")
-    skills_rows = st.data_editor(
-        st.session_state["skills_rows"],
-        key="skills_editor",
-        num_rows="dynamic",
-        use_container_width=True,
-        column_config={
-            "skill": st.column_config.TextColumn("Skill"),
-            "months": st.column_config.NumberColumn("Months", min_value=0, step=1),
-            "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
-            "page": st.column_config.NumberColumn("Page", min_value=1, step=1),
-            "confidence": st.column_config.NumberColumn("Confidence", min_value=0.0, max_value=1.0, step=0.01),
-        },
-    )
-
-    st.subheader("Human Review Queue")
-    review_rows = st.data_editor(
-        st.session_state["review_rows"],
-        key="review_editor",
-        num_rows="dynamic",
-        use_container_width=True,
-        column_config={
-            "name": st.column_config.TextColumn("Field Name"),
-            "ai_value": st.column_config.TextColumn("AI Value"),
-            "human_value": st.column_config.TextColumn("Human Value"),
-            "review_status": st.column_config.SelectboxColumn(
-                "Review Status",
-                options=[status.value for status in ReviewStatus],
-            ),
-            "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
-            "page": st.column_config.NumberColumn("Page", min_value=1, step=1),
-            "confidence": st.column_config.NumberColumn("Confidence", min_value=0.0, max_value=1.0, step=0.01),
-        },
-    )
-
-with right_column:
-    st.subheader("Job Description")
-    st.text_input("Role Title", key="role_title")
-    st.number_input(
-        "Minimum Total Experience (months)",
-        min_value=0,
-        step=1,
-        key="min_total_experience_months",
-    )
-    st.text_area("Mandatory Skills (comma separated)", key="mandatory_skills", height=80)
-    st.text_area("Preferred Skills (comma separated)", key="preferred_skills", height=80)
-    st.text_area("Required Domains (comma separated)", key="required_domains", height=80)
-
-    st.subheader("Mandatory Rules")
-    rules_rows = st.data_editor(
-        st.session_state["rules_rows"],
-        key="rules_editor",
-        num_rows="dynamic",
-        use_container_width=True,
-        column_config={
-            "id": st.column_config.TextColumn("Rule ID"),
-            "type": st.column_config.SelectboxColumn(
-                "Rule Type",
-                options=["skill_min_months", "skill_required", "total_experience_min_months"],
-            ),
-            "severity": st.column_config.SelectboxColumn(
-                "Severity",
-                options=[severity.value for severity in Severity],
-            ),
-            "weight": st.column_config.NumberColumn("Weight", min_value=0, step=1),
-            "skill": st.column_config.TextColumn("Skill"),
-            "min_months": st.column_config.NumberColumn("Min Months", min_value=0, step=1),
-            "domain": st.column_config.TextColumn("Domain"),
-            "expected_value": st.column_config.TextColumn("Expected Value"),
-        },
-    )
-
-screen_button = st.button("Run Screening", type="primary", use_container_width=True)
-if screen_button:
-    payload = _build_request(skills_rows, review_rows, rules_rows)
-    _render_results(payload)
