@@ -107,7 +107,9 @@ def extract_screening_request(
     prompt = f"""
 Extract resume screening data from the following inputs.
 
-Return a JSON object with this exact top-level structure. 
+You MUST extract the candidate's actual name, experience, and skills from the RESUME TEXT and fill them into the JSON structure below. Do NOT return the empty template verbatim.
+
+Return a JSON object strictly following this schema:
 IMPORTANT: If no mandatory rules are found in the notes, return an empty array `[]` for "rules". Do NOT generate placeholder rules.
 Valid rule types: "skill_min_months", "skill_required", "total_experience_min_months".
 
@@ -154,10 +156,12 @@ Valid rule types: "skill_min_months", "skill_required", "total_experience_min_mo
   ]
 }}
 
+- Extract the actual Candidate Full Name from the text.
 - Infer skill duration conservatively from the resume text.
 - If mandatory rule notes specify thresholds like years or months, convert them into structured rules.
 - Add review rows for important extracted values such as skill durations and total experience.
 - Keep unsupported values empty rather than inventing details.
+- Fill the JSON template with REAL data from the texts below. Do NOT output empty strings if the data exists.
 
 RESUME TEXT:
 {resume_text}

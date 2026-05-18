@@ -505,8 +505,11 @@ if phase == "INGEST":
                     mandatory_rule_notes=st.session_state["mandatory_rule_notes"],
                 )
             _request_to_session(extracted)
-            st.session_state["phase"] = "REVIEW"
-            st.rerun()
+            if not st.session_state.get("full_name") and not st.session_state.get("skills_rows"):
+                st.warning("⚠️ The AI returned an empty candidate profile. Please verify your Resume/JD text or try again.")
+            else:
+                st.session_state["phase"] = "REVIEW"
+                st.rerun()
 
 elif phase == "REVIEW":
     st.header("🧑‍💻 Phase 2: Human-in-the-Loop Review")
