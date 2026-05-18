@@ -44,8 +44,8 @@ class AppPage:
     # Phase detection
     # ------------------------------------------------------------------
     def current_phase_header(self) -> str:
-        # Streamlit headers are rendered as h2 elements
-        h2 = self.page.locator("h2").first
+        # Streamlit main body headers are inside section.main
+        h2 = self.page.locator("section.main h2").first
         if h2.count() > 0:
             return h2.inner_text()
         return ""
