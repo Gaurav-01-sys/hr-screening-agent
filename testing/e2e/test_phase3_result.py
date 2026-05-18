@@ -8,11 +8,11 @@ from testing.conftest import AppPage
 
 def test_screening_run_and_results_rendering(app_with_sample: AppPage) -> None:
     """Verify that running the screening navigates to Phase 3 and shows evaluation results."""
-    assert app_with_sample.is_phase("phase 2")
+    app_with_sample.wait_for_phase("Phase 2")
 
     # Run screening
     app_with_sample.click_run_final_screening()
-    assert app_with_sample.is_phase("phase 3")
+    app_with_sample.wait_for_phase("Phase 3")
 
     # Check that score / pass status is shown
     # The default sample has Tableau = 18 months, but the rule requires 24 months. So it should FAIL.

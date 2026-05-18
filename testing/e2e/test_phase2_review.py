@@ -8,7 +8,7 @@ from testing.conftest import AppPage
 
 def test_edit_candidate_and_jd_fields(app_with_sample: AppPage) -> None:
     """Verify that editing fields on Phase 2 works and values are preserved."""
-    assert app_with_sample.is_phase("phase 2")
+    app_with_sample.wait_for_phase("Phase 2")
 
     # Locate and check the initial full name
     full_name_input = app_with_sample.page.get_by_label("Full Name")
@@ -35,7 +35,7 @@ def test_edit_candidate_and_jd_fields(app_with_sample: AppPage) -> None:
 
 def test_review_tables_are_rendered(app_with_sample: AppPage) -> None:
     """Verify that tables like Extracted Skill Evidence and Mandatory Rules are rendered as data editors."""
-    assert app_with_sample.is_phase("phase 2")
+    app_with_sample.wait_for_phase("Phase 2")
 
     # Streamlit data editors render with a div having data-testid="stDataEditor"
     editors = app_with_sample.page.locator("div[data-testid='stDataEditor']")
