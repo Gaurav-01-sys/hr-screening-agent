@@ -439,19 +439,38 @@ def _render_results(payload: ScreeningRequest) -> None:
     st.json(response.model_dump())
 
 
-st.set_page_config(page_title="HR Screening Workbench", layout="wide")
-st.title("HR Screening Workbench")
+st.set_page_config(page_title="HR Screening Workbench", layout="wide", page_icon="🎯")
+st.title("🎯 HR Screening Workbench")
 st.caption("Resume/JD screening with human verification, mandatory rules, and deterministic scoring.")
+
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .stButton button {
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .stTextInput input, .stTextArea textarea, .stNumberInput input {
+            border-radius: 8px;
+        }
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 _ensure_session()
 phase = st.session_state["phase"]
 
 with st.sidebar:
-    st.header("Session")
-    if st.button("Load Sample Case", use_container_width=True):
+    st.header("⚙️ Session")
+    if st.button("📂 Load Sample Case", use_container_width=True):
         _sample_to_session()
         st.rerun()
-    if st.button("Reset Blank Form", use_container_width=True):
+    if st.button("🗑️ Reset Blank Form", use_container_width=True):
         _blank_session()
         st.rerun()
     st.markdown(
@@ -459,7 +478,7 @@ with st.sidebar:
     )
 
 if phase == "INGEST":
-    st.header("Phase 1: Ingest Documents")
+    st.header("📄 Phase 1: Ingest Documents")
     st.markdown("Upload or paste the Candidate's Resume and the Job Description, then use AI to extract the data.")
     resume_upload = st.file_uploader("Upload Resume/CV", type=["pdf", "docx"], key="resume_upload")
     jd_upload = st.file_uploader("Upload Job Description", type=["pdf", "docx"], key="jd_upload")
@@ -494,7 +513,7 @@ if phase == "INGEST":
         st.success(f"Groq configured. Model: {GROQ_MODEL}")
     else:
         st.warning("Groq is not configured. Add GROQ_API_KEY to your .env file.")
-    if st.button("Extract With Groq", use_container_width=True, disabled=not groq_is_configured(), type="primary"):
+    if st.button("✨ Extract With AI (Groq)", use_container_width=True, disabled=not groq_is_configured(), type="primary"):
         if not st.session_state["resume_text"].strip() or not st.session_state["jd_text"].strip():
             st.error("Resume Text and JD Text are required for Groq extraction.")
         else:
@@ -509,7 +528,7 @@ if phase == "INGEST":
             st.rerun()
 
 elif phase == "REVIEW":
-    st.header("Phase 2: Human-in-the-Loop Review")
+    st.header("🧑‍💻 Phase 2: Human-in-the-Loop Review")
     st.markdown("Verify the AI-extracted data. You can directly edit the skill months or provide human overrides in the review queue before running the final screening rules.")
     cv_col, left_column, right_column = st.columns([0.8, 1.1, 0.9])
 
@@ -600,18 +619,18 @@ elif phase == "REVIEW":
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Back to Ingest", use_container_width=True):
+        if st.button("⬅️ Back to Ingest", use_container_width=True):
             st.session_state["phase"] = "INGEST"
             st.rerun()
     with col2:
-        if st.button("Run Final Screening", type="primary", use_container_width=True):
+        if st.button("🚀 Run Final Screening", type="primary", use_container_width=True):
             payload = _build_request(skills_rows, review_rows, rules_rows)
             st.session_state["screening_payload"] = payload
             st.session_state["phase"] = "RESULT"
             st.rerun()
 
 elif phase == "RESULT":
-    st.header("Phase 3: Screening Result")
+    st.header("🎯 Phase 3: Screening Result")
     payload = st.session_state.get("screening_payload")
     if payload:
         _render_results(payload)
@@ -619,6 +638,6 @@ elif phase == "RESULT":
         st.error("No screening data found. Please start over.")
     
     st.markdown("---")
-    if st.button("Start New Screening", use_container_width=True):
+    if st.button("🔄 Start New Screening", use_container_width=True):
         _blank_session()
         st.rerun()
