@@ -511,7 +511,13 @@ if phase == "INGEST":
 elif phase == "REVIEW":
     st.header("Phase 2: Human-in-the-Loop Review")
     st.markdown("Verify the AI-extracted data. You can directly edit the skill months or provide human overrides in the review queue before running the final screening rules.")
-    left_column, right_column = st.columns([1.1, 0.9])
+    cv_col, left_column, right_column = st.columns([0.8, 1.1, 0.9])
+
+    with cv_col:
+        st.subheader("Source Resume")
+        resume_text = st.session_state.get("resume_text", "")
+        st.text_area("Original Text", value=resume_text, height=650, disabled=True, key="review_resume_text")
+
 
     with left_column:
         st.subheader("Candidate")
