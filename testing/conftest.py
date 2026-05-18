@@ -44,11 +44,11 @@ class AppPage:
     # Phase detection
     # ------------------------------------------------------------------
     def current_phase_header(self) -> str:
-        # Streamlit main body headers are inside section.main
-        h2 = self.page.locator("section.main h2").first
-        if h2.count() > 0:
-            return h2.inner_text()
-        return ""
+        # Streamlit main body headers are inside stAppViewBlockContainer
+        try:
+            return self.page.locator("div[data-testid='stAppViewBlockContainer'] h2").first.inner_text(timeout=5000)
+        except Exception:
+            return ""
 
     def is_phase(self, label: str) -> bool:
         header = self.current_phase_header()
