@@ -138,24 +138,27 @@ Return a JSON object with this exact top-level structure:
     "required_domains": []
   }},
   "rules": [
-    {{
-      "id": "",
-      "type": "skill_min_months",
-      "severity": "hard_fail",
-      "weight": 25,
-      "skill": "",
-      "min_months": 0,
-      "domain": "",
-      "expected_value": ""
-    }}
+    // Array of rule objects. Leave this array EMPTY if no mandatory rules are found in the notes.
+    // Valid types: "skill_min_months", "skill_required", "total_experience_min_months"
+    // Example:
+    // {{
+    //   "id": "rule-001",
+    //   "type": "skill_min_months",
+    //   "severity": "hard_fail",
+    //   "weight": 25,
+    //   "skill": "Python",
+    //   "min_months": 24,
+    //   "domain": "",
+    //   "expected_value": ""
+    // }}
   ]
 }}
 
-Rules:
 - Infer skill duration conservatively from the resume text.
 - If mandatory rule notes specify thresholds like years or months, convert them into structured rules.
 - Add review rows for important extracted values such as skill durations and total experience.
 - Keep unsupported values empty rather than inventing details.
+- Do NOT generate placeholder or blank rules. If no valid rules are found, return an empty "rules" array [].
 
 RESUME TEXT:
 {resume_text}

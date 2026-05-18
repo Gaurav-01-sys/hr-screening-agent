@@ -83,37 +83,14 @@ def _blank_session() -> None:
     st.session_state["candidate_id"] = "cand-001"
     st.session_state["full_name"] = ""
     st.session_state["total_experience_months"] = 0
-    st.session_state["skills_rows"] = [
-        {"skill": "", "months": 0, "evidence_snippet": "", "page": 1, "confidence": 0.8}
-    ]
-    st.session_state["review_rows"] = [
-        {
-            "name": "",
-            "ai_value": "",
-            "human_value": "",
-            "review_status": ReviewStatus.pending.value,
-            "evidence_snippet": "",
-            "page": 1,
-            "confidence": 0.8,
-        }
-    ]
+    st.session_state["skills_rows"] = []
+    st.session_state["review_rows"] = []
     st.session_state["role_title"] = ""
     st.session_state["min_total_experience_months"] = 0
     st.session_state["mandatory_skills"] = ""
     st.session_state["preferred_skills"] = ""
     st.session_state["required_domains"] = ""
-    st.session_state["rules_rows"] = [
-        {
-            "id": "rule-001",
-            "type": "skill_min_months",
-            "severity": Severity.hard_fail.value,
-            "weight": 25,
-            "skill": "",
-            "min_months": 0,
-            "domain": "",
-            "expected_value": "",
-        }
-    ]
+    st.session_state["rules_rows"] = []
 
 
 def _ensure_session() -> None:
