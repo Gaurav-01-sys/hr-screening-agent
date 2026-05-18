@@ -34,6 +34,10 @@ def groq_is_configured() -> bool:
     return bool(GROQ_API_KEY) and Groq is not None
 
 
+# Exposed for debug display in the UI
+_last_raw_response: str = ""
+
+
 def _build_client() -> Groq:
     if Groq is None:
         raise ValueError("groq package is not installed. Run: pip install groq")
@@ -172,7 +176,11 @@ MANDATORY RULE NOTES:
         temperature=0.2,
         response_format={"type": "json_object"},
     )
-    payload = _extract_json(completion.choices[0].message.content or "{}")
+    global _last_raw_response
+    raw_content = completion.choices[0].message.content or "{}"
+    _last_raw_response = raw_content
+    print(f"[GROQ RAW RESPONSE]:\n{raw_content[:2000]}")
+    payload = _extract_json(raw_content)
     if not isinstance(payload, dict):
         payload = {}
 

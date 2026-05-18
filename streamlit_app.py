@@ -511,6 +511,7 @@ if phase == "INGEST":
                     mandatory_rule_notes=st.session_state["mandatory_rule_notes"],
                 )
             # Debug: show raw AI output before navigating
+            from app import groq_extractor as _ge
             with st.expander("🔍 Debug: Raw AI Extraction Output", expanded=True):
                 st.write("**Candidate Name:**", extracted.candidate.full_name)
                 st.write("**Total Exp (months):**", extracted.candidate.total_experience_months)
@@ -519,6 +520,9 @@ if phase == "INGEST":
                     st.write(f"  - {s.skill}: {s.months} months")
                 st.write("**Role Title:**", extracted.job.role_title)
                 st.write("**Rules:**", len(extracted.rules))
+                st.markdown("---")
+                st.markdown("**Raw model response (first 3000 chars):**")
+                st.code(_ge._last_raw_response[:3000] or "(empty)", language="json")
             _request_to_session(extracted)
             if not st.session_state.get("full_name") and not st.session_state.get("skills_rows"):
                 st.warning("⚠️ The AI returned an empty candidate profile. Please verify your Resume/JD text or try again.")
