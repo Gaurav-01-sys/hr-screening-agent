@@ -91,6 +91,11 @@ def _blank_session() -> None:
     st.session_state["preferred_skills"] = ""
     st.session_state["required_domains"] = ""
     st.session_state["rules_rows"] = []
+    st.session_state["resume_text"] = ""
+    st.session_state["jd_text"] = ""
+    st.session_state["mandatory_rule_notes"] = ""
+    st.session_state["resume_upload_status"] = None
+    st.session_state["jd_upload_status"] = None
 
 
 def _ensure_session() -> None:
