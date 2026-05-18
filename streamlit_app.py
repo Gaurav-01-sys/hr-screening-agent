@@ -120,7 +120,7 @@ def _ensure_session() -> None:
     if "phase" not in st.session_state:
         st.session_state["phase"] = "INGEST"
     if "candidate_id" not in st.session_state:
-        _sample_to_session()
+        _blank_session()
 
 
 def _normalize_text(text: str) -> str:
