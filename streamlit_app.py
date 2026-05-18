@@ -440,8 +440,16 @@ def _render_results(payload: ScreeningRequest) -> None:
 
 
 st.set_page_config(page_title="HR Screening Workbench", layout="wide", page_icon="🎯")
-st.title("🎯 HR Screening Workbench")
-st.caption("Resume/JD screening with human verification, mandatory rules, and deterministic scoring.")
+
+header_col1, header_col2 = st.columns([0.85, 0.15])
+with header_col1:
+    st.title("🎯 HR Screening Workbench")
+    st.caption("Resume/JD screening with human verification, mandatory rules, and deterministic scoring.")
+with header_col2:
+    st.write("") # Padding
+    if st.button("🗑️ Reset Application", use_container_width=True):
+        _blank_session()
+        st.rerun()
 
 st.markdown("""
     <style>
@@ -469,9 +477,6 @@ with st.sidebar:
     st.header("⚙️ Session")
     if st.button("📂 Load Sample Case", use_container_width=True):
         _sample_to_session()
-        st.rerun()
-    if st.button("🗑️ Reset Blank Form", use_container_width=True):
-        _blank_session()
         st.rerun()
     st.markdown(
         "Use the editable tables to simulate extracted resume facts, human review corrections, job requirements, and mandatory checks."
@@ -509,15 +514,14 @@ if phase == "INGEST":
         help="Use this as the free-form rule input that a future LLM-to-rules step can convert into structured checks.",
         key="mandatory_rule_notes",
     )
-    if groq_is_configured():
-        st.success(f"Groq configured. Model: {GROQ_MODEL}")
-    else:
-        st.warning("Groq is not configured. Add GROQ_API_KEY to your .env file.")
-    if st.button("✨ Extract With AI (Groq)", use_container_width=True, disabled=not groq_is_configured(), type="primary"):
+    if not groq_is_configured():
+        st.warning("AI is not configured. Please add an API key.")
+    
+    if st.button("✨ Extract With AI", use_container_width=True, disabled=not groq_is_configured(), type="primary"):
         if not st.session_state["resume_text"].strip() or not st.session_state["jd_text"].strip():
-            st.error("Resume Text and JD Text are required for Groq extraction.")
+            st.error("Resume Text and JD Text are required for AI extraction.")
         else:
-            with st.spinner("Extracting candidate, job, and rule data with Groq..."):
+            with st.spinner("Analyzing resume and job description using AI..."):
                 extracted = extract_screening_request(
                     resume_text=st.session_state["resume_text"],
                     jd_text=st.session_state["jd_text"],
@@ -638,6 +642,6 @@ elif phase == "RESULT":
         st.error("No screening data found. Please start over.")
     
     st.markdown("---")
-    if st.button("🔄 Start New Screening", use_container_width=True):
+    if st.button("Start New Screening", use_container_width=True):
         _blank_session()
         st.rerun()
