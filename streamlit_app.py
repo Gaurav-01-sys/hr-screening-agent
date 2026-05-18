@@ -258,17 +258,6 @@ def _request_to_session(payload: ScreeningRequest) -> None:
             "expected_value": item.expected_value or "",
         }
         for item in payload.rules
-    ] or [
-        {
-            "id": "rule-001",
-            "type": "skill_min_months",
-            "severity": Severity.hard_fail.value,
-            "weight": 25,
-            "skill": "",
-            "min_months": 0,
-            "domain": "",
-            "expected_value": "",
-        }
     ]
 
 

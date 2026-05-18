@@ -287,8 +287,11 @@ MANDATORY RULE NOTES:
             severity_value = Severity.soft.value
         rule_id = str(item.get("id", "")).strip()
         rule_type = str(item.get("type", "")).strip()
-        if not rule_id or not rule_type:
+        if not rule_type:
             continue
+        # Auto-generate an id if the model omitted it
+        if not rule_id:
+            rule_id = f"rule-{len(rules) + 1:03d}"
         rules.append(
             MandatoryRule(
                 id=rule_id,
