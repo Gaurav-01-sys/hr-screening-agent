@@ -217,7 +217,8 @@ def _request_to_session(payload: ScreeningRequest) -> None:
             "confidence": item.evidence[0].confidence if item.evidence else 0.8,
         }
         for item in payload.candidate.skills
-    ] or [{"skill": "", "months": 0, "evidence_snippet": "", "page": 1, "confidence": 0.8}]
+        if item.skill and not item.skill.upper().startswith("REPLACE")
+    ]
     st.session_state["review_rows"] = [
         {
             "name": item.name,

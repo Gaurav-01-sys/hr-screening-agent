@@ -23,11 +23,10 @@ from .schemas import (
 
 
 SYSTEM_PROMPT = """
-You are an information extraction engine for HR resume screening.
-Return valid JSON only.
-Do not add markdown fences.
-Use evidence snippets copied from the input text when possible.
-Be conservative. If something is missing, leave it blank or use 0.
+You are an expert HR resume screening assistant.
+Your job is to READ the provided resume and job description texts and EXTRACT real information from them.
+Always return a single valid JSON object. No markdown fences. No extra text.
+Extract as much data as possible. Do NOT leave fields empty if the information exists in the text.
 """
 
 
@@ -105,63 +104,54 @@ def extract_screening_request(
 ) -> ScreeningRequest:
     client = _build_client()
     prompt = f"""
-Extract resume screening data from the following inputs.
+You are given a Resume, a Job Description, and optional Mandatory Rule Notes.
+Extract all information from these texts and return it as a JSON object.
 
-You MUST extract the candidate's actual name, experience, and skills from the RESUME TEXT and fill them into the JSON structure below. Do NOT return the empty template verbatim.
+INSTRUCTIONS:
+1. Read the RESUME TEXT carefully. Extract the candidate's full name, total years/months of experience, and ALL skills mentioned with their estimated durations.
+2. Read the JD TEXT carefully. Extract the role title, experience requirements, and required/preferred skills.
+3. If MANDATORY RULE NOTES are provided, convert them into structured rules. Otherwise return an empty rules array.
+4. Return ONLY the JSON object below, filled with REAL data from the texts. Replace ALL example values.
 
-Return a JSON object strictly following this schema:
-IMPORTANT: If no mandatory rules are found in the notes, return an empty array `[]` for "rules". Do NOT generate placeholder rules.
-Valid rule types: "skill_min_months", "skill_required", "total_experience_min_months".
+IMPORTANT: Convert years to months (e.g. 2 years = 24 months, 1.5 years = 18 months).
 
+Return this exact JSON structure filled with real extracted data:
 {{
   "candidate": {{
     "candidate_id": "cand-001",
-    "full_name": "<Extract Name from Resume>",
-    "total_experience_months": 36,
+    "full_name": "REPLACE WITH REAL NAME FROM RESUME",
+    "total_experience_months": 0,
     "skills": [
       {{
-        "skill": "<Skill Name>",
-        "months": 24,
-        "evidence": [{{"snippet": "<Quote from resume>", "page": 1, "confidence": 0.9}}]
+        "skill": "REPLACE WITH REAL SKILL",
+        "months": 0,
+        "evidence": [{{"snippet": "REPLACE WITH QUOTE FROM RESUME", "page": 1, "confidence": 0.9}}]
       }}
     ],
     "fields_for_review": [
       {{
-        "name": "<Field Name>",
-        "ai_value": "<Extracted Value>",
+        "name": "Total Experience",
+        "ai_value": "REPLACE WITH VALUE",
         "human_value": "",
         "review_status": "pending",
-        "evidence": [{{"snippet": "<Quote from resume>", "page": 1, "confidence": 0.9}}]
+        "evidence": [{{"snippet": "REPLACE WITH QUOTE", "page": 1, "confidence": 0.9}}]
       }}
     ]
   }},
   "job": {{
-    "role_title": "<Role Title from JD>",
-    "min_total_experience_months": 24,
-    "mandatory_skills": ["<Skill 1>", "<Skill 2>"],
-    "preferred_skills": ["<Skill 3>"],
-    "required_domains": ["<Domain>"]
+    "role_title": "REPLACE WITH ROLE FROM JD",
+    "min_total_experience_months": 0,
+    "mandatory_skills": [],
+    "preferred_skills": [],
+    "required_domains": []
   }},
-  "rules": [
-    {{
-      "id": "rule-001",
-      "type": "skill_min_months",
-      "severity": "hard_fail",
-      "weight": 25,
-      "skill": "<Skill Name>",
-      "min_months": 24,
-      "domain": "",
-      "expected_value": ""
-    }}
-  ]
+  "rules": []
 }}
 
-- Extract the actual Candidate Full Name from the text.
-- Infer skill duration conservatively from the resume text.
-- If mandatory rule notes specify thresholds like years or months, convert them into structured rules.
-- Add review rows for important extracted values such as skill durations and total experience.
-- Keep unsupported values empty rather than inventing details.
-- Fill the JSON template with REAL data from the texts below. Do NOT output empty strings if the data exists.
+Valid rule types (only use if MANDATORY RULE NOTES are provided):
+- "skill_min_months": requires skill + min_months
+- "skill_required": requires skill only
+- "total_experience_min_months": requires min_months only
 
 RESUME TEXT:
 {resume_text}
