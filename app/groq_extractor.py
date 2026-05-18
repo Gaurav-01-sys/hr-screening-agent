@@ -177,6 +177,8 @@ MANDATORY RULE NOTES:
         response_format={"type": "json_object"},
     )
     payload = _extract_json(completion.choices[0].message.content or "{}")
+    if not isinstance(payload, dict):
+        payload = {}
 
     candidate_data = payload.get("candidate", {})
     skills = []
