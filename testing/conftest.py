@@ -29,7 +29,7 @@ class AppPage:
     # Navigation
     # ------------------------------------------------------------------
     def goto(self) -> None:
-        self.page.goto(self.base_url)
+        self.page.goto(self.base_url, wait_until="domcontentloaded")
         self.wait_for_streamlit()
 
     def wait_for_streamlit(self, timeout: int = 20_000) -> None:
@@ -54,16 +54,23 @@ class AppPage:
         header = self.current_phase_header()
         return label.lower() in header.lower()
 
+    def wait_for_phase(self, phase_name: str, timeout: int = 15000) -> None:
+        """Wait until the main header contains the expected phase name."""
+        locator = self.page.locator("[data-testid='stMain'] h2").first
+        expect(locator).to_contain_text(phase_name, timeout=timeout)
+
     # ------------------------------------------------------------------
     # Phase 1 helpers
     # ------------------------------------------------------------------
     def upload_resume(self) -> None:
-        locator = self.page.get_by_label("Upload Resume/CV")
+        # hidden input inside the first file uploader
+        locator = self.page.locator("input[type='file']").first
         locator.set_input_files(str(SAMPLE_CV_PATH))
         self.wait_for_streamlit()
 
     def upload_jd(self) -> None:
-        locator = self.page.get_by_label("Upload Job Description")
+        # hidden input inside the second file uploader
+        locator = self.page.locator("input[type='file']").nth(1)
         locator.set_input_files(str(SAMPLE_JD_PATH))
         self.wait_for_streamlit()
 
@@ -123,4 +130,5 @@ def app(page: Page, base_url: str) -> AppPage:
 def app_with_sample(app: AppPage) -> AppPage:
     """Navigate to Phase 2 using the Load Sample Case shortcut."""
     app.click_load_sample()
+    app.wait_for_phase("Phase 2")
     return app

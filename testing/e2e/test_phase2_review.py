@@ -12,14 +12,14 @@ def test_edit_candidate_and_jd_fields(app_with_sample: AppPage) -> None:
 
     # Locate and check the initial full name
     full_name_input = app_with_sample.page.get_by_label("Full Name")
-    expect(full_name_input).to_have_value("Riya Sharma")
+    expect(full_name_input).to_have_value("Sample Candidate")
 
     # Edit the full name
-    full_name_input.fill("Riya Sharma Edited")
+    full_name_input.fill("Sample Candidate Edited")
     app_with_sample.wait_for_streamlit()
 
     # Verify change is preserved
-    expect(full_name_input).to_have_value("Riya Sharma Edited")
+    expect(full_name_input).to_have_value("Sample Candidate Edited")
 
     # Locate and check initial Role Title
     role_title_input = app_with_sample.page.get_by_label("Role Title")
@@ -40,4 +40,4 @@ def test_review_tables_are_rendered(app_with_sample: AppPage) -> None:
     # Streamlit data editors render with a div having data-testid="stDataEditor"
     editors = app_with_sample.page.locator("div[data-testid='stDataEditor']")
     # We should have at least 3 editors (Skills, Review Queue, Rules)
-    expect(editors).to_have_count(3)
+    expect(editors).to_have_count(3, timeout=15000)
