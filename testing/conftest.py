@@ -44,9 +44,9 @@ class AppPage:
     # Phase detection
     # ------------------------------------------------------------------
     def current_phase_header(self) -> str:
-        # Streamlit main body headers are inside stAppViewBlockContainer
+        # Streamlit main body headers are inside stMain
         try:
-            return self.page.locator("div[data-testid='stAppViewBlockContainer'] h2").first.inner_text(timeout=5000)
+            return self.page.locator("[data-testid='stMain'] h2").first.inner_text(timeout=5000)
         except Exception:
             return ""
 
