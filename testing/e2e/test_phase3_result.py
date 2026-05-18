@@ -22,5 +22,5 @@ def test_screening_run_and_results_rendering(app_with_sample: AppPage) -> None:
     expect(app_with_sample.page.get_by_text("Score Breakdown", exact=False)).to_be_visible()
 
     # Check that the rule evaluation breakdown is present
-    expect(app_with_sample.page.get_by_text("tableau_min_exp", exact=False)).to_be_visible()
-    expect(app_with_sample.page.get_by_text("Tableau", exact=False)).to_be_visible()
+    expect(app_with_sample.page.get_by_text("tableau_min_exp", exact=False).first).to_be_visible()
+    expect(app_with_sample.page.get_by_text("Tableau", exact=False).first).to_be_visible()
