@@ -179,7 +179,7 @@ def _sync_uploaded_text(
     file_bytes = uploaded_file.getvalue()
     fingerprint = f"{uploaded_file.name}:{len(file_bytes)}"
     current_status = st.session_state.get(status_key, {})
-    if current_status.get("fingerprint") == fingerprint:
+    if isinstance(current_status, dict) and current_status.get("fingerprint") == fingerprint:
         return
 
     try:
@@ -472,10 +472,10 @@ if phase == "INGEST":
         label="JD",
     )
     resume_status = st.session_state.get("resume_upload_status")
-    if resume_status:
+    if isinstance(resume_status, dict) and "level" in resume_status and "message" in resume_status:
         getattr(st, resume_status["level"])(resume_status["message"])
     jd_status = st.session_state.get("jd_upload_status")
-    if jd_status:
+    if isinstance(jd_status, dict) and "level" in jd_status and "message" in jd_status:
         getattr(st, jd_status["level"])(jd_status["message"])
     st.text_area("Resume Text", height=180, key="resume_text")
     st.text_area("JD Text", height=180, key="jd_text")
