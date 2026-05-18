@@ -31,11 +31,21 @@ class AppPage:
     def goto(self) -> None:
         self.page.goto(self.base_url, wait_until="domcontentloaded")
         self.wait_for_streamlit()
+        # Expand sidebar if collapsed
+        try:
+            collapsed = self.page.locator("[data-testid='collapsedSidebar']")
+            if collapsed.is_visible(timeout=1000):
+                collapsed.click()
+                self.page.wait_for_timeout(500)
+        except Exception:
+            pass
 
     def wait_for_streamlit(self, timeout: int = 20_000) -> None:
         """Wait until Streamlit has finished rendering (spinner gone)."""
-        self.page.wait_for_load_state("networkidle", timeout=timeout)
-        # Streamlit shows a top progress bar while loading; wait for it to go
+        try:
+            self.page.wait_for_load_state("networkidle", timeout=timeout)
+        except Exception:
+            pass
         self.page.wait_for_selector(
             "div[data-testid='stAppViewContainer']", timeout=timeout
         )
@@ -81,14 +91,14 @@ class AppPage:
         self.page.get_by_label("JD Text").fill(text)
 
     def fill_rule_notes(self, text: str) -> None:
-        self.page.get_by_role("textbox", name="Mandatory Rule Notes").fill(text)
+        self.page.get_by_placeholder("Example: Tableau must be at least 24 months", exact=False).fill(text)
 
     def click_load_sample(self) -> None:
-        self.page.get_by_role("button", name="Load Sample Case").click()
+        self.page.get_by_role("button", name="Load Sample Case", exact=False).click()
         self.wait_for_streamlit()
 
     def click_extract_with_ai(self) -> None:
-        self.page.get_by_role("button", name="Extract With AI").click()
+        self.page.get_by_role("button", name="Extract With AI", exact=False).click()
         # AI call can take up to 60 s
         self.wait_for_streamlit(timeout=60_000)
 
@@ -96,22 +106,22 @@ class AppPage:
     # Phase 2 helpers
     # ------------------------------------------------------------------
     def click_back_to_ingest(self) -> None:
-        self.page.get_by_role("button", name="Back to Ingest").click()
+        self.page.get_by_role("button", name="Back to Ingest", exact=False).click()
         self.wait_for_streamlit()
 
     def click_run_final_screening(self) -> None:
-        self.page.get_by_role("button", name="Run Final Screening").click()
+        self.page.get_by_role("button", name="Run Final Screening", exact=False).click()
         self.wait_for_streamlit()
 
     # ------------------------------------------------------------------
     # Global
     # ------------------------------------------------------------------
     def click_reset(self) -> None:
-        self.page.get_by_role("button", name="Reset Application").click()
+        self.page.get_by_role("button", name="Reset Application", exact=False).click()
         self.wait_for_streamlit()
 
     def click_start_new_screening(self) -> None:
-        self.page.get_by_role("button", name="Start New Screening").click()
+        self.page.get_by_role("button", name="Start New Screening", exact=False).click()
         self.wait_for_streamlit()
 
 

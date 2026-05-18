@@ -46,19 +46,19 @@ def test_mandatory_rule_notes_visible(app: AppPage) -> None:
 
 def test_extract_button_visible(app: AppPage) -> None:
     """Extract With AI button is present on Phase 1."""
-    btn = app.page.get_by_role("button", name="Extract With AI")
+    btn = app.page.get_by_role("button", name="Extract With AI", exact=False)
     expect(btn).to_be_visible()
 
 
 def test_load_sample_button_visible(app: AppPage) -> None:
     """Load Sample Case sidebar button is present."""
-    btn = app.page.get_by_role("button", name="Load Sample Case")
+    btn = app.page.get_by_role("button", name="Load Sample Case", exact=False)
     expect(btn).to_be_visible()
 
 
 def test_reset_button_visible(app: AppPage) -> None:
     """Reset Application button is present in the header area."""
-    btn = app.page.get_by_role("button", name="Reset Application")
+    btn = app.page.get_by_role("button", name="Reset Application", exact=False)
     expect(btn).to_be_visible()
 
 
