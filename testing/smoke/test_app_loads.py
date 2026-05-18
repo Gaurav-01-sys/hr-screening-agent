@@ -8,7 +8,7 @@ from testing.conftest import AppPage
 
 def test_page_title(app: AppPage) -> None:
     """The browser tab title contains the app name."""
-    expect(app.page).to_have_title("HR Screening System")
+    expect(app.page).to_have_title("HR Screening Workbench")
 
 
 def test_phase1_header_visible(app: AppPage) -> None:
@@ -42,7 +42,7 @@ def test_jd_text_area_visible(app: AppPage) -> None:
 
 def test_mandatory_rule_notes_visible(app: AppPage) -> None:
     """Mandatory Rule Notes area is visible on Phase 1."""
-    ta = app.page.get_by_label("Mandatory Rule Notes")
+    ta = app.page.get_by_role("textbox", name="Mandatory Rule Notes")
     expect(ta).to_be_visible()
 
 

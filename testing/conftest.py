@@ -44,11 +44,15 @@ class AppPage:
     # Phase detection
     # ------------------------------------------------------------------
     def current_phase_header(self) -> str:
-        h1 = self.page.locator("h1").first
-        return h1.inner_text()
+        # Streamlit headers are rendered as h2 elements
+        h2 = self.page.locator("h2").first
+        if h2.count() > 0:
+            return h2.inner_text()
+        return ""
 
     def is_phase(self, label: str) -> bool:
-        return label.lower() in self.current_phase_header().lower()
+        header = self.current_phase_header()
+        return label.lower() in header.lower()
 
     # ------------------------------------------------------------------
     # Phase 1 helpers
@@ -70,7 +74,7 @@ class AppPage:
         self.page.get_by_label("JD Text").fill(text)
 
     def fill_rule_notes(self, text: str) -> None:
-        self.page.get_by_label("Mandatory Rule Notes").fill(text)
+        self.page.get_by_role("textbox", name="Mandatory Rule Notes").fill(text)
 
     def click_load_sample(self) -> None:
         self.page.get_by_role("button", name="Load Sample Case").click()
