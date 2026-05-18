@@ -40,7 +40,7 @@ def test_jd_text_area_visible(app: AppPage) -> None:
 
 def test_mandatory_rule_notes_visible(app: AppPage) -> None:
     """Mandatory Rule Notes area is visible on Phase 1."""
-    ta = app.page.get_by_role("textbox", name="Mandatory Rule Notes")
+    ta = app.page.get_by_placeholder("Example: Tableau must be at least 24 months", exact=False)
     expect(ta).to_be_visible()
 
 

@@ -21,4 +21,4 @@ def test_reset_button_wipes_inputs(app: AppPage) -> None:
     # Fields should be empty
     expect(app.page.get_by_label("Resume Text")).to_have_value("")
     expect(app.page.get_by_label("JD Text")).to_have_value("")
-    expect(app.page.get_by_role("textbox", name="Mandatory Rule Notes")).to_have_value("")
+    expect(app.page.get_by_placeholder("Example: Tableau must be at least 24 months", exact=False)).to_have_value("")
