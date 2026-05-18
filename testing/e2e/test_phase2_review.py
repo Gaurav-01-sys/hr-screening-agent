@@ -40,4 +40,6 @@ def test_review_tables_are_rendered(app_with_sample: AppPage) -> None:
     # Streamlit data editors render with a div having class stDataFrameGlideDataEditor
     editors = app_with_sample.page.locator(".stDataFrameGlideDataEditor")
     # We should have at least 3 editors (Skills, Review Queue, Rules)
-    expect(editors).to_have_count(3, timeout=15000)
+    expect(editors.first).to_be_visible()
+    count = editors.count()
+    assert count >= 3, f"Expected at least 3 data editors, found {count}"

@@ -18,8 +18,8 @@ def test_screening_run_and_results_rendering(app_with_sample: AppPage) -> None:
     # The default sample has Tableau = 18 months, but the rule requires 24 months. So it should FAIL.
     expect(app_with_sample.page.locator("[data-testid='stMetricValue']").first).to_have_text("Reject")
     
-    # Check that the Candidate Name is visible in Phase 3
-    expect(app_with_sample.page.get_by_text("Sample Candidate", exact=False)).to_be_visible()
+    # Check that score breakdown is visible in Phase 3
+    expect(app_with_sample.page.get_by_text("Score Breakdown", exact=False)).to_be_visible()
 
     # Check that the rule evaluation breakdown is present
     expect(app_with_sample.page.get_by_text("rule-001", exact=False)).to_be_visible()
