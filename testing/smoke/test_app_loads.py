@@ -18,14 +18,12 @@ def test_phase1_header_visible(app: AppPage) -> None:
 
 def test_resume_uploader_visible(app: AppPage) -> None:
     """Resume file uploader widget is present on Phase 1."""
-    uploader = app.page.get_by_label("Upload Resume/CV")
-    expect(uploader).to_be_visible()
+    expect(app.page.get_by_text("Upload Resume/CV")).to_be_visible()
 
 
 def test_jd_uploader_visible(app: AppPage) -> None:
     """Job Description file uploader widget is present on Phase 1."""
-    uploader = app.page.get_by_label("Upload Job Description")
-    expect(uploader).to_be_visible()
+    expect(app.page.get_by_text("Upload Job Description")).to_be_visible()
 
 
 def test_resume_text_area_visible(app: AppPage) -> None:

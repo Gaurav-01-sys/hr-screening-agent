@@ -13,9 +13,12 @@ def test_pdf_upload_populates_text_areas(app: AppPage) -> None:
     # Upload CV
     app.upload_resume()
     
+    # Wait for success status
+    expect(app.page.get_by_text("Resume text loaded from sample_cv.pdf.")).to_be_visible(timeout=20000)
+    
     # Wait and verify that the Resume Text area is populated (not empty)
     resume_text_area = app.page.get_by_label("Resume Text")
-    expect(resume_text_area).not_to_have_value("", timeout=15000)
+    expect(resume_text_area).not_to_have_value("", timeout=5000)
     
     # Check that extracted text contains key words from our sample CV
     expect(resume_text_area).to_contain_text("Riya Sharma")
@@ -23,9 +26,12 @@ def test_pdf_upload_populates_text_areas(app: AppPage) -> None:
     # Upload JD
     app.upload_jd()
 
+    # Wait for success status
+    expect(app.page.get_by_text("JD text loaded from sample_jd.pdf.")).to_be_visible(timeout=20000)
+
     # Wait and verify that the JD Text area is populated
     jd_text_area = app.page.get_by_label("JD Text")
-    expect(jd_text_area).not_to_have_value("", timeout=15000)
+    expect(jd_text_area).not_to_have_value("", timeout=5000)
     
     # Check that extracted text contains key words from our sample JD
     expect(jd_text_area).to_contain_text("Business Intelligence Analyst")
