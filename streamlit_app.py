@@ -509,6 +509,15 @@ if phase == "INGEST":
                     jd_text=st.session_state["jd_text"],
                     mandatory_rule_notes=st.session_state["mandatory_rule_notes"],
                 )
+            # Debug: show raw AI output before navigating
+            with st.expander("🔍 Debug: Raw AI Extraction Output", expanded=True):
+                st.write("**Candidate Name:**", extracted.candidate.full_name)
+                st.write("**Total Exp (months):**", extracted.candidate.total_experience_months)
+                st.write("**Skills found:**", len(extracted.candidate.skills))
+                for s in extracted.candidate.skills:
+                    st.write(f"  - {s.skill}: {s.months} months")
+                st.write("**Role Title:**", extracted.job.role_title)
+                st.write("**Rules:**", len(extracted.rules))
             _request_to_session(extracted)
             if not st.session_state.get("full_name") and not st.session_state.get("skills_rows"):
                 st.warning("⚠️ The AI returned an empty candidate profile. Please verify your Resume/JD text or try again.")

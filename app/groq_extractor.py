@@ -116,31 +116,31 @@ Valid rule types: "skill_min_months", "skill_required", "total_experience_min_mo
 {{
   "candidate": {{
     "candidate_id": "cand-001",
-    "full_name": "",
-    "total_experience_months": 0,
+    "full_name": "<Extract Name from Resume>",
+    "total_experience_months": 36,
     "skills": [
       {{
-        "skill": "",
-        "months": 0,
-        "evidence": [{{"snippet": "", "page": 1, "confidence": 0.8}}]
+        "skill": "<Skill Name>",
+        "months": 24,
+        "evidence": [{{"snippet": "<Quote from resume>", "page": 1, "confidence": 0.9}}]
       }}
     ],
     "fields_for_review": [
       {{
-        "name": "",
-        "ai_value": "",
+        "name": "<Field Name>",
+        "ai_value": "<Extracted Value>",
         "human_value": "",
         "review_status": "pending",
-        "evidence": [{{"snippet": "", "page": 1, "confidence": 0.8}}]
+        "evidence": [{{"snippet": "<Quote from resume>", "page": 1, "confidence": 0.9}}]
       }}
     ]
   }},
   "job": {{
-    "role_title": "",
-    "min_total_experience_months": 0,
-    "mandatory_skills": [],
-    "preferred_skills": [],
-    "required_domains": []
+    "role_title": "<Role Title from JD>",
+    "min_total_experience_months": 24,
+    "mandatory_skills": ["<Skill 1>", "<Skill 2>"],
+    "preferred_skills": ["<Skill 3>"],
+    "required_domains": ["<Domain>"]
   }},
   "rules": [
     {{
@@ -148,7 +148,7 @@ Valid rule types: "skill_min_months", "skill_required", "total_experience_min_mo
       "type": "skill_min_months",
       "severity": "hard_fail",
       "weight": 25,
-      "skill": "Python",
+      "skill": "<Skill Name>",
       "min_months": 24,
       "domain": "",
       "expected_value": ""
