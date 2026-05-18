@@ -23,7 +23,7 @@ def test_edit_candidate_and_jd_fields(app_with_sample: AppPage) -> None:
 
     # Locate and check initial Role Title
     role_title_input = app_with_sample.page.get_by_label("Role Title")
-    expect(role_title_input).to_have_value("Business Intelligence Analyst")
+    expect(role_title_input).to_have_value("BI Analyst")
 
     # Edit the role title
     role_title_input.fill("Senior BI Analyst")
@@ -37,7 +37,7 @@ def test_review_tables_are_rendered(app_with_sample: AppPage) -> None:
     """Verify that tables like Extracted Skill Evidence and Mandatory Rules are rendered as data editors."""
     app_with_sample.wait_for_phase("Phase 2")
 
-    # Streamlit data editors render with a div having data-testid="stDataEditor"
-    editors = app_with_sample.page.locator("div[data-testid='stDataEditor']")
+    # Streamlit data editors render with a div having class stDataFrameGlideDataEditor
+    editors = app_with_sample.page.locator(".stDataFrameGlideDataEditor")
     # We should have at least 3 editors (Skills, Review Queue, Rules)
     expect(editors).to_have_count(3, timeout=15000)
