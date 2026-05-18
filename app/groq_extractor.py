@@ -48,24 +48,40 @@ def _build_client() -> Groq:
 
 def _extract_json(content: str) -> Dict[str, Any]:
     content = content.strip()
-    # Strip markdown if present
-    if content.startswith("```json"):
-        content = content[7:]
-    if content.startswith("```"):
-        content = content[3:]
+
+    # Strip markdown fences if present
+    for fence in ("```json", "```"):
+        if content.startswith(fence):
+            content = content[len(fence):]
+            break
     if content.endswith("```"):
         content = content[:-3]
     content = content.strip()
 
-    # raw_decode reads the first valid JSON value (object or array)
-    try:
-        obj, _ = json.JSONDecoder().raw_decode(content)
-    except json.JSONDecodeError as e:
-        print(f"JSONDecodeError: {e}")
-        print(f"Failed JSON string:\n{content}")
-        raise ValueError(f"Failed to decode JSON: {e}")
+    # Find the first JSON object or array in the content
+    # (handles models that add prose before/after the JSON)
+    start = -1
+    start_char = None
+    for i, ch in enumerate(content):
+        if ch in ("{", "["):
+            start = i
+            start_char = ch
+            break
 
-    # If the model returned a dict, we're done
+    if start == -1:
+        print(f"[GROQ] No JSON found in response:\n{content[:500]}")
+        return {}
+
+    json_str = content[start:]
+
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(json_str)
+    except json.JSONDecodeError as e:
+        print(f"[GROQ] JSONDecodeError: {e}")
+        print(f"[GROQ] Content snippet:\n{json_str[:500]}")
+        return {}
+
+    # If we got a proper dict, return it directly
     if isinstance(obj, dict):
         return obj
 
