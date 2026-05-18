@@ -51,19 +51,51 @@ def _extract_json(content: str) -> Dict[str, Any]:
     # Strip markdown if present
     if content.startswith("```json"):
         content = content[7:]
+    if content.startswith("```"):
+        content = content[3:]
     if content.endswith("```"):
         content = content[:-3]
     content = content.strip()
 
-    # Sometimes the model appends extra text after the valid JSON object.
-    # raw_decode reads the first valid JSON object and ignores the rest.
+    # raw_decode reads the first valid JSON value (object or array)
     try:
         obj, _ = json.JSONDecoder().raw_decode(content)
-        return obj
     except json.JSONDecodeError as e:
         print(f"JSONDecodeError: {e}")
         print(f"Failed JSON string:\n{content}")
         raise ValueError(f"Failed to decode JSON: {e}")
+
+    # If the model returned a dict, we're done
+    if isinstance(obj, dict):
+        return obj
+
+    # Some models return a malformed array like:
+    # [{"candidate": {...}}, "job", ":", {...}, "rules", ":", [...]]
+    # Reconstruct into a proper dict
+    if isinstance(obj, list):
+        result: Dict[str, Any] = {}
+        i = 0
+        while i < len(obj):
+            item = obj[i]
+            if isinstance(item, dict):
+                result.update(item)
+                i += 1
+            elif isinstance(item, str) and i + 1 < len(obj):
+                key = item
+                # skip optional ":" string element
+                next_i = i + 1
+                if next_i < len(obj) and obj[next_i] == ":":
+                    next_i += 1
+                if next_i < len(obj):
+                    result[key] = obj[next_i]
+                    i = next_i + 1
+                else:
+                    i += 1
+            else:
+                i += 1
+        return result
+
+    return {}
 
 
 def _safe_int(value: Any, default: int = 0) -> int:
@@ -174,7 +206,6 @@ MANDATORY RULE NOTES:
             {"role": "user", "content": prompt.strip()},
         ],
         temperature=0.2,
-        response_format={"type": "json_object"},
     )
     global _last_raw_response
     raw_content = completion.choices[0].message.content or "{}"
