@@ -99,6 +99,23 @@ Communication drafts use a natural recruiter tone. Their prompt context is
 organized with a bounded MemPalace-inspired wing/room/drawer structure while
 keeping the source evidence traceable and local.
 
+## Deploy to Render
+
+The root [`render.yaml`](render.yaml) defines three Render services:
+
+- `hr-screening-backend`: FastAPI on the Render-provided `$PORT`, with `/health` as its health check
+- `hr-screening-frontend`: the Vite build served as a static site, with an SPA fallback to `index.html`
+- `hr-screening-streamlit`: the optional Streamlit workbench on the Render-provided `$PORT`
+
+To deploy, create a new Blueprint in the Render dashboard and select this
+repository. During the first sync, provide `GROQ_API_KEY` for the backend and
+Streamlit services. After the backend has a public `onrender.com` URL, set the
+frontend service's `VITE_API_URL` to that URL and redeploy the frontend.
+
+The Blueprint does not add a managed database. The app's current SQLite file is
+therefore ephemeral on Render; use a persistent disk or migrate the persistence
+layer before relying on hosted screening history.
+
 ## Groq integration
 
 The app now uses Groq for:
