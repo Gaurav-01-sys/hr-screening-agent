@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# HR Screening frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The frontend is a Vite + React 19 + TypeScript workbench for the existing
+FastAPI screening service. It keeps the three phases intact:
 
-Currently, two official plugins are available:
+1. Ingest a resume and job description, by upload or pasted text.
+2. Review and correct extracted skills and fields.
+3. Run deterministic screening rules and inspect the result, interview guide,
+   and draft-only communication.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Setup
 
-## React Compiler
+From this directory:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The UI uses Tailwind CSS v4 through the Vite plugin and local shadcn/ui-style
+components configured in `components.json`. The visual system uses shadcn CSS
+variables with a dark, dense analyst-workbench theme.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## API configuration
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+By default, requests go to `http://localhost:8000`. To point the UI at another
+FastAPI deployment, create `frontend/.env.local`:
+
+```bash
+VITE_API_URL=https://your-api.example.com
 ```
+
+The existing API contract is unchanged:
+
+- `POST /parse-document` with multipart field `file`
+- `POST /extract` with `resume_text`, `jd_text`, and `mandatory_rule_notes`
+- `POST /screen` with the reviewed screening request
+
+## Checks
+
+```bash
+npm run build
+npm run lint
+```
+
+The frontend does not mock the backend, send email, add authentication, or
+persist screening state. All edits are immutable React state updates and are
+sent in the `/screen` JSON body when scoring is run.

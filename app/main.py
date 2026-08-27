@@ -9,13 +9,19 @@ from .groq_extractor import extract_screening_request, groq_is_configured
 from .rules import evaluate_rules
 from .sample_data import build_sample_request
 from .scoring import build_screening_response
-from .schemas import ScreeningRequest, ScreeningResponse
-from .database import SessionLocal, engine, Base
+from .schemas import (
+    BatchScreeningRequest,
+    BatchScreeningResponse,
+    RankedScreeningResult,
+    ScreeningRequest,
+    ScreeningResponse,
+)
+from .database import SessionLocal, ensure_database_schema
 from .crud import save_screening_run
 from .normalizer import normalize_candidate_profile
 
-# Ensure DB tables are created
-Base.metadata.create_all(bind=engine)
+# Ensure DB tables and additive schema updates are applied.
+ensure_database_schema()
 
 app = FastAPI(
     title="HR Screening Agentic System",
@@ -77,3 +83,30 @@ def screen_candidate(payload: ScreeningRequest) -> ScreeningResponse:
         print(f"Failed to save screening run: {e}")
 
     return response
+
+
+@app.post("/screen/batch", response_model=BatchScreeningResponse)
+def screen_candidates(payload: BatchScreeningRequest) -> BatchScreeningResponse:
+    """Screen and rank candidates against one shared, human-defined rubric."""
+    ranked = []
+    for candidate in payload.candidates:
+        request = ScreeningRequest(candidate=candidate, job=payload.job, rules=payload.rules)
+        candidate_result = screen_candidate(request)
+        ranked.append(
+            RankedScreeningResult(
+                rank=0,
+                candidate_id=candidate.candidate_id,
+                candidate_name=candidate.full_name,
+                response=candidate_result,
+            )
+        )
+    ranked.sort(key=lambda item: item.response.scores.final_score, reverse=True)
+    for index, item in enumerate(ranked, start=1):
+        item.rank = index
+    return BatchScreeningResponse(
+        job_title=payload.job.role_title,
+        total_screened=len(ranked),
+        invited_to_interview=sum(item.response.next_action == "invite_to_interview" for item in ranked),
+        manual_review_required=sum(item.response.next_action == "manual_review" for item in ranked),
+        results=ranked,
+    )

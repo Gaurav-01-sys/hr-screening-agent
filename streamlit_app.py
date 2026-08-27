@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List
@@ -15,6 +16,7 @@ from app.schemas import (
     CandidateProfile,
     Evidence,
     ExtractedField,
+    ExperienceEntry,
     JobRequirement,
     MandatoryRule,
     ReviewStatus,
@@ -22,12 +24,12 @@ from app.schemas import (
     Severity,
     SkillExperience,
 )
-from app.database import SessionLocal, engine, Base
+from app.database import SessionLocal, ensure_database_schema
 from app.crud import save_screening_run
 from app.normalizer import normalize_candidate_profile
 
-# Ensure tables are created
-Base.metadata.create_all(bind=engine)
+# Ensure tables and additive schema updates are applied.
+ensure_database_schema()
 
 
 def _sample_to_session() -> None:
@@ -35,6 +37,11 @@ def _sample_to_session() -> None:
     sample = build_sample_request()
     st.session_state["candidate_id"] = sample.candidate.candidate_id
     st.session_state["full_name"] = sample.candidate.full_name or ""
+    st.session_state["email"] = sample.candidate.email or ""
+    st.session_state["location"] = sample.candidate.location or ""
+    st.session_state["work_authorization"] = sample.candidate.work_authorization or ""
+    st.session_state["notice_period_days"] = sample.candidate.notice_period_days or 0
+    st.session_state["domains"] = ", ".join(sample.candidate.domains)
     st.session_state["total_experience_months"] = sample.candidate.total_experience_months
     st.session_state["skills_rows"] = [
         {
@@ -45,6 +52,18 @@ def _sample_to_session() -> None:
             "confidence": item.evidence[0].confidence if item.evidence else 0.8,
         }
         for item in sample.candidate.skills
+    ]
+    st.session_state["experiences_rows"] = [
+        {
+            "title": item.title,
+            "company": item.company,
+            "start_date": item.start_date.isoformat(),
+            "end_date": item.end_date.isoformat() if item.end_date else "",
+            "skills_used": ", ".join(item.skills_used),
+            "domains": ", ".join(item.domains),
+            "evidence_snippet": item.evidence[0].snippet if item.evidence else "",
+        }
+        for item in sample.candidate.experiences
     ]
     st.session_state["review_rows"] = [
         {
@@ -63,6 +82,10 @@ def _sample_to_session() -> None:
     st.session_state["mandatory_skills"] = ", ".join(sample.job.mandatory_skills)
     st.session_state["preferred_skills"] = ", ".join(sample.job.preferred_skills)
     st.session_state["required_domains"] = ", ".join(sample.job.required_domains)
+    st.session_state["job_location"] = sample.job.location or ""
+    st.session_state["job_work_authorization_required"] = sample.job.work_authorization_required or ""
+    st.session_state["job_max_notice_period_days"] = sample.job.max_notice_period_days or 0
+    st.session_state["job_red_flags"] = ", ".join(sample.job.red_flags)
     st.session_state["rules_rows"] = [
         {
             "id": item.id,
@@ -73,6 +96,7 @@ def _sample_to_session() -> None:
             "min_months": item.min_months,
             "domain": item.domain or "",
             "expected_value": item.expected_value or "",
+            "max_days": item.max_days,
         }
         for item in sample.rules
     ]
@@ -82,14 +106,24 @@ def _blank_session() -> None:
     st.session_state["phase"] = "INGEST"
     st.session_state["candidate_id"] = "cand-001"
     st.session_state["full_name"] = ""
+    st.session_state["email"] = ""
+    st.session_state["location"] = ""
+    st.session_state["work_authorization"] = ""
+    st.session_state["notice_period_days"] = 0
+    st.session_state["domains"] = ""
     st.session_state["total_experience_months"] = 0
     st.session_state["skills_rows"] = []
+    st.session_state["experiences_rows"] = []
     st.session_state["review_rows"] = []
     st.session_state["role_title"] = ""
     st.session_state["min_total_experience_months"] = 0
     st.session_state["mandatory_skills"] = ""
     st.session_state["preferred_skills"] = ""
     st.session_state["required_domains"] = ""
+    st.session_state["job_location"] = ""
+    st.session_state["job_work_authorization_required"] = ""
+    st.session_state["job_max_notice_period_days"] = 0
+    st.session_state["job_red_flags"] = ""
     st.session_state["rules_rows"] = []
     st.session_state["resume_text"] = ""
     st.session_state["jd_text"] = ""
@@ -207,6 +241,11 @@ def _split_csv(value: str) -> List[str]:
 def _request_to_session(payload: ScreeningRequest) -> None:
     st.session_state["candidate_id"] = payload.candidate.candidate_id
     st.session_state["full_name"] = payload.candidate.full_name or ""
+    st.session_state["email"] = payload.candidate.email or ""
+    st.session_state["location"] = payload.candidate.location or ""
+    st.session_state["work_authorization"] = payload.candidate.work_authorization or ""
+    st.session_state["notice_period_days"] = payload.candidate.notice_period_days or 0
+    st.session_state["domains"] = ", ".join(payload.candidate.domains)
     st.session_state["total_experience_months"] = payload.candidate.total_experience_months
     st.session_state["skills_rows"] = [
         {
@@ -218,6 +257,18 @@ def _request_to_session(payload: ScreeningRequest) -> None:
         }
         for item in payload.candidate.skills
         if item.skill and not item.skill.upper().startswith("REPLACE")
+    ]
+    st.session_state["experiences_rows"] = [
+        {
+            "title": item.title,
+            "company": item.company,
+            "start_date": item.start_date.isoformat(),
+            "end_date": item.end_date.isoformat() if item.end_date else "",
+            "skills_used": ", ".join(item.skills_used),
+            "domains": ", ".join(item.domains),
+            "evidence_snippet": item.evidence[0].snippet if item.evidence else "",
+        }
+        for item in payload.candidate.experiences
     ]
     st.session_state["review_rows"] = [
         {
@@ -246,6 +297,10 @@ def _request_to_session(payload: ScreeningRequest) -> None:
     st.session_state["mandatory_skills"] = ", ".join(payload.job.mandatory_skills)
     st.session_state["preferred_skills"] = ", ".join(payload.job.preferred_skills)
     st.session_state["required_domains"] = ", ".join(payload.job.required_domains)
+    st.session_state["job_location"] = payload.job.location or ""
+    st.session_state["job_work_authorization_required"] = payload.job.work_authorization_required or ""
+    st.session_state["job_max_notice_period_days"] = payload.job.max_notice_period_days or 0
+    st.session_state["job_red_flags"] = ", ".join(payload.job.red_flags)
     st.session_state["rules_rows"] = [
         {
             "id": item.id,
@@ -256,6 +311,7 @@ def _request_to_session(payload: ScreeningRequest) -> None:
             "min_months": item.min_months,
             "domain": item.domain or "",
             "expected_value": item.expected_value or "",
+            "max_days": item.max_days,
         }
         for item in payload.rules
     ]
@@ -281,6 +337,7 @@ def _evidence_from_row(source_document: str, row: Dict[str, Any]) -> List[Eviden
 
 def _build_request(
     skills_rows: List[Dict[str, Any]],
+    experiences_rows: List[Dict[str, Any]],
     review_rows: List[Dict[str, Any]],
     rules_rows: List[Dict[str, Any]],
 ) -> ScreeningRequest:
@@ -294,6 +351,34 @@ def _build_request(
             SkillExperience(
                 skill=skill,
                 months=int(months_value or 0),
+                evidence=_evidence_from_row("resume", row),
+            )
+        )
+
+    experiences = []
+    for row in experiences_rows:
+        title = str(row.get("title", "")).strip()
+        company = str(row.get("company", "")).strip()
+        start_raw = str(row.get("start_date", "")).strip()
+        if not title or not start_raw:
+            continue
+        try:
+            start_date = date.fromisoformat(start_raw[:10])
+        except ValueError:
+            continue
+        end_raw = str(row.get("end_date", "")).strip()
+        try:
+            end_date = date.fromisoformat(end_raw[:10]) if end_raw else None
+        except ValueError:
+            end_date = None
+        experiences.append(
+            ExperienceEntry(
+                title=title,
+                company=company,
+                start_date=start_date,
+                end_date=end_date,
+                skills_used=_split_csv(str(row.get("skills_used", ""))),
+                domains=_split_csv(str(row.get("domains", ""))),
                 evidence=_evidence_from_row("resume", row),
             )
         )
@@ -319,6 +404,12 @@ def _build_request(
         full_name=st.session_state["full_name"].strip() or None,
         total_experience_months=int(st.session_state["total_experience_months"] or 0),
         skills=skills,
+        experiences=experiences,
+        domains=_split_csv(st.session_state.get("domains", "")),
+        email=st.session_state.get("email", "").strip() or None,
+        location=st.session_state.get("location", "").strip() or None,
+        work_authorization=st.session_state.get("work_authorization", "").strip() or None,
+        notice_period_days=int(st.session_state.get("notice_period_days", 0) or 0) or None,
         fields_for_review=review_fields,
     )
 
@@ -328,6 +419,10 @@ def _build_request(
         mandatory_skills=_split_csv(st.session_state["mandatory_skills"]),
         preferred_skills=_split_csv(st.session_state["preferred_skills"]),
         required_domains=_split_csv(st.session_state["required_domains"]),
+        location=st.session_state.get("job_location", "").strip() or None,
+        work_authorization_required=st.session_state.get("job_work_authorization_required", "").strip() or None,
+        max_notice_period_days=int(st.session_state.get("job_max_notice_period_days", 0) or 0) or None,
+        red_flags=_split_csv(st.session_state.get("job_red_flags", "")),
     )
 
     rules = []
@@ -345,6 +440,7 @@ def _build_request(
                 weight=int(row.get("weight", 0) or 0),
                 skill=str(row.get("skill", "")).strip() or None,
                 min_months=int(min_months) if min_months not in (None, "") else None,
+                max_days=int(row.get("max_days")) if row.get("max_days") not in (None, "") else None,
                 domain=str(row.get("domain", "")).strip() or None,
                 expected_value=str(row.get("expected_value", "")).strip() or None,
             )
@@ -370,11 +466,12 @@ def _render_results(payload: ScreeningRequest) -> None:
         st.error(f"Failed to save to database: {e}")
 
     st.subheader("Screening Result")
-    metric_columns = st.columns(4)
+    metric_columns = st.columns(5)
     metric_columns[0].metric("Recommendation", response.recommendation.value.replace("_", " ").title())
     metric_columns[1].metric("Final Score", f"{response.scores.final_score}")
-    metric_columns[2].metric("Hard Fail", "Yes" if response.hard_fail else "No")
-    metric_columns[3].metric(
+    metric_columns[2].metric("Grade", response.grade)
+    metric_columns[3].metric("Hard Fail", "Yes" if response.hard_fail else "No")
+    metric_columns[4].metric(
         "Evidence Confidence",
         f"{round(response.scores.evidence_confidence * 100, 1)}%",
     )
@@ -406,6 +503,38 @@ def _render_results(payload: ScreeningRequest) -> None:
                     st.caption(
                         f"Page {evidence.page or '-'} | confidence {evidence.confidence} | {evidence.snippet}"
                     )
+
+    st.subheader("Reviewer Summary")
+    st.info(
+        "This is decision support, not an automatic hiring decision. Review the evidence, "
+        "apply the same rubric to every candidate, and document the final human decision."
+    )
+    summary_columns = st.columns(3)
+    with summary_columns[0]:
+        st.markdown("**Strengths**")
+        for strength in response.strengths or ["No strengths were surfaced by the rubric."]:
+            st.write(f"- {strength}")
+    with summary_columns[1]:
+        st.markdown("**Concerns**")
+        for concern in response.concerns or ["No unresolved concerns."]:
+            st.write(f"- {concern}")
+    with summary_columns[2]:
+        st.markdown("**Resume flags**")
+        for flag in response.red_flags or ["None surfaced."]:
+            st.write(f"- {flag}")
+
+    st.subheader("Structured Interview Guide")
+    st.caption("Use the same core questions and scorecards for candidates for this role.")
+    for index, question in enumerate(response.interview_questions, start=1):
+        with st.expander(f"{index}. {question.type.title()} — {question.question}"):
+            st.write(f"**Purpose:** {question.purpose}")
+            st.write(f"**Good-answer signals:** {question.good_answer_signals}")
+            if question.evidence_anchor:
+                st.caption(f"Resume evidence anchor: {question.evidence_anchor}")
+
+    st.subheader("Communication Draft")
+    st.warning("Draft only — a human must verify the rationale and send any candidate communication.")
+    st.text_area("Draft email", value=response.communication_draft or "", height=220, disabled=True)
 
     st.subheader("JSON Output")
     st.json(response.model_dump())
@@ -534,6 +663,11 @@ elif phase == "REVIEW":
         st.subheader("Candidate")
         st.text_input("Candidate ID", key="candidate_id")
         st.text_input("Full Name", key="full_name")
+        st.text_input("Email", key="email")
+        st.text_input("Location", key="location")
+        st.text_input("Work Authorization", key="work_authorization", help="Optional, job-relevant status only; do not enter protected characteristics.")
+        st.number_input("Notice Period (days)", min_value=0, step=1, key="notice_period_days")
+        st.text_input("Candidate Domains (comma separated)", key="domains")
         st.number_input("Total Experience (months)", min_value=0, step=1, key="total_experience_months")
 
         st.subheader("Extracted Skill Evidence")
@@ -548,6 +682,23 @@ elif phase == "REVIEW":
                 "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
                 "page": st.column_config.NumberColumn("Page", min_value=1, step=1),
                 "confidence": st.column_config.NumberColumn("Confidence", min_value=0.0, max_value=1.0, step=0.01),
+            },
+        )
+
+        st.subheader("Work History Evidence")
+        experiences_rows = st.data_editor(
+            st.session_state["experiences_rows"],
+            key="experiences_editor",
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "title": st.column_config.TextColumn("Title"),
+                "company": st.column_config.TextColumn("Company"),
+                "start_date": st.column_config.TextColumn("Start (YYYY-MM-DD)"),
+                "end_date": st.column_config.TextColumn("End (YYYY-MM-DD)"),
+                "skills_used": st.column_config.TextColumn("Skills Used"),
+                "domains": st.column_config.TextColumn("Domains"),
+                "evidence_snippet": st.column_config.TextColumn("Evidence Snippet", width="large"),
             },
         )
 
@@ -583,6 +734,10 @@ elif phase == "REVIEW":
         st.text_area("Mandatory Skills (comma separated)", key="mandatory_skills", height=80)
         st.text_area("Preferred Skills (comma separated)", key="preferred_skills", height=80)
         st.text_area("Required Domains (comma separated)", key="required_domains", height=80)
+        st.text_input("Required Location", key="job_location")
+        st.text_input("Required Work Authorization", key="job_work_authorization_required")
+        st.number_input("Maximum Notice Period (days)", min_value=0, step=1, key="job_max_notice_period_days")
+        st.text_area("Red Flags to Review (comma separated)", key="job_red_flags", height=60)
 
         st.subheader("Mandatory Rules")
         rules_rows = st.data_editor(
@@ -594,7 +749,11 @@ elif phase == "REVIEW":
                 "id": st.column_config.TextColumn("Rule ID"),
                 "type": st.column_config.SelectboxColumn(
                     "Rule Type",
-                    options=["skill_min_months", "skill_required", "total_experience_min_months"],
+                    options=[
+                        "skill_min_months", "skill_required", "total_experience_min_months",
+                        "education_required", "location_required", "notice_period_max_days",
+                        "work_authorization_required", "domain_required",
+                    ],
                 ),
                 "severity": st.column_config.SelectboxColumn(
                     "Severity",
@@ -603,6 +762,7 @@ elif phase == "REVIEW":
                 "weight": st.column_config.NumberColumn("Weight", min_value=0, step=1),
                 "skill": st.column_config.TextColumn("Skill"),
                 "min_months": st.column_config.NumberColumn("Min Months", min_value=0, step=1),
+                "max_days": st.column_config.NumberColumn("Max Days", min_value=0, step=1),
                 "domain": st.column_config.TextColumn("Domain"),
                 "expected_value": st.column_config.TextColumn("Expected Value"),
             },
@@ -616,7 +776,7 @@ elif phase == "REVIEW":
             st.rerun()
     with col2:
         if st.button("🚀 Run Final Screening", type="primary", use_container_width=True):
-            payload = _build_request(skills_rows, review_rows, rules_rows)
+            payload = _build_request(skills_rows, experiences_rows, review_rows, rules_rows)
             st.session_state["screening_payload"] = payload
             st.session_state["phase"] = "RESULT"
             st.rerun()

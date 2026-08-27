@@ -1,346 +1,172 @@
-import { useState } from 'react'
-import axios from 'axios'
-import { CheckCircle, XCircle, FileText, Briefcase, RefreshCw, Activity, ArrowRight } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { Activity, CircleDot, RotateCcw } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert"
+import { Button } from "./components/ui/button"
+import { Separator } from "./components/ui/separator"
+import { PhaseStepper } from "./components/PhaseStepper"
+import { IngestPhase } from "./components/IngestPhase"
+import { ReviewPhase } from "./components/ReviewPhase"
+import { ResultPhase } from "./components/ResultPhase"
+import { API_URL, extractScreening, getApiErrorMessage, getHealth, parseDocument, screenCandidate } from "./lib/api"
+import type { ExtractedField, HealthResponse, Phase, ScreeningRequest, ScreeningResponse, SkillExperience } from "./types"
 
-interface RuleResult { rule_id: string; passed: boolean; severity: string; message: string; evidence: any[] }
-interface ScoreBreakdown { mandatory_fit: number; experience_depth: number; skill_match: number; final_score: number; [key:string]: number }
-interface ScreeningResponse { recommendation: string; hard_fail: boolean; rule_results: RuleResult[]; scores: ScoreBreakdown; explanation: string }
+type ApiStatus = "checking" | "online" | "offline"
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
-
-export default function App() {
-  const [phase, setPhase] = useState<'INGEST' | 'REVIEW' | 'RESULT'>('INGEST')
+function App() {
+  const [phase, setPhase] = useState<Phase>("INGEST")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const [resumeText, setResumeText] = useState('')
-  const [jdText, setJdText] = useState('')
-  const [ruleNotes, setRuleNotes] = useState('')
-  
-  const [screeningReq, setScreeningReq] = useState<any>(null)
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("checking")
+  const [resumeText, setResumeText] = useState("")
+  const [jdText, setJdText] = useState("")
+  const [ruleNotes, setRuleNotes] = useState("")
+  const [screeningReq, setScreeningReq] = useState<ScreeningRequest | null>(null)
   const [screeningRes, setScreeningRes] = useState<ScreeningResponse | null>(null)
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setIsLoading(true);
-    setError(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    
+  useEffect(() => {
+    let active = true
+    void getHealth()
+      .then((health: HealthResponse) => {
+        if (active) setApiStatus(health.status === "ok" ? "online" : "offline")
+      })
+      .catch(() => {
+        if (active) setApiStatus("offline")
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const reset = () => {
+    setPhase("INGEST")
+    setIsLoading(false)
+    setError(null)
+    setResumeText("")
+    setJdText("")
+    setRuleNotes("")
+    setScreeningReq(null)
+    setScreeningRes(null)
+  }
+
+  const canNavigate = (target: Phase): boolean => {
+    if (target === "INGEST") return true
+    if (target === "REVIEW") return screeningReq !== null
+    return screeningRes !== null
+  }
+
+  const navigate = (target: Phase) => {
+    if (canNavigate(target)) {
+      setError(null)
+      setPhase(target)
+    }
+  }
+
+  const handleUpload = async (file: File, target: "resume" | "jd") => {
+    setIsLoading(true)
+    setError(null)
     try {
-      const res = await axios.post(`${API_URL}/parse-document`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      if (res.data.error) {
-        setError(res.data.error);
-      } else {
-        setter(res.data.text);
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to parse document.");
+      const result = await parseDocument(file)
+      if (result.error) throw new Error(result.error)
+      const text = result.text?.trim() ?? ""
+      if (!text) throw new Error("The document parser returned no text.")
+      if (target === "resume") setResumeText(text)
+      else setJdText(text)
+    } catch (uploadError: unknown) {
+      setError(getApiErrorMessage(uploadError, "Failed to parse document."))
     } finally {
-      setIsLoading(false);
-      e.target.value = ''; // reset input
+      setIsLoading(false)
     }
   }
 
   const handleExtract = async () => {
-    if (!resumeText || !jdText) {
-      setError("Please provide both Resume and Job Description texts.");
-      return;
+    if (!resumeText.trim() || !jdText.trim()) {
+      setError("Provide both a resume and a job description before extracting.")
+      return
     }
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
     try {
-      const res = await axios.post(`${API_URL}/extract`, {
-        resume_text: resumeText,
-        jd_text: jdText,
-        mandatory_rule_notes: ruleNotes
-      });
-      setScreeningReq(res.data);
-      setPhase('REVIEW');
-    } catch (err: any) {
-      setError(err.message || "Failed to extract data. Ensure the backend is running on port 8000.");
+      const request = await extractScreening({ resume_text: resumeText, jd_text: jdText, mandatory_rule_notes: ruleNotes })
+      setScreeningReq(request)
+      setScreeningRes(null)
+      setPhase("REVIEW")
+    } catch (extractError: unknown) {
+      setError(getApiErrorMessage(extractError, "Failed to extract candidate and job facts."))
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   const handleScreening = async () => {
-    setIsLoading(true);
-    setError(null);
+    if (!screeningReq) return
+    setIsLoading(true)
+    setError(null)
     try {
-      const res = await axios.post(`${API_URL}/screen`, screeningReq);
-      setScreeningRes(res.data);
-      setPhase('RESULT');
-    } catch (err: any) {
-      setError(err.message || "Failed to screen candidate.");
+      const result = await screenCandidate(screeningReq)
+      setScreeningRes(result)
+      setPhase("RESULT")
+    } catch (screenError: unknown) {
+      setError(getApiErrorMessage(screenError, "Failed to run screening rules."))
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
-  const renderIngest = () => (
-    <div className="animate-fade-in flex-col gap-6">
-      <div className="glass-panel w-full">
-        <h2 className="flex items-center gap-2"><FileText /> Upload Documents</h2>
-        <p>Paste your candidate's resume and the job description below.</p>
-        
-        <div className="grid grid-cols-2 gap-6 mt-4">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-secondary font-medium">Resume Text</label>
-              <label className="btn text-xs px-2 py-1 bg-slate-800 text-secondary cursor-pointer hover:bg-slate-700 rounded border border-slate-700">
-                <input type="file" className="hidden" accept=".pdf,.docx" onChange={(e) => handleFileUpload(e, setResumeText)} />
-                Upload PDF/DOCX
-              </label>
-            </div>
-            <textarea 
-              rows={8} 
-              value={resumeText} 
-              onChange={e => setResumeText(e.target.value)}
-              placeholder="Paste the raw text of the resume here..."
-            />
-          </div>
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-secondary font-medium">Job Description Text</label>
-              <label className="btn text-xs px-2 py-1 bg-slate-800 text-secondary cursor-pointer hover:bg-slate-700 rounded border border-slate-700">
-                <input type="file" className="hidden" accept=".pdf,.docx" onChange={(e) => handleFileUpload(e, setJdText)} />
-                Upload PDF/DOCX
-              </label>
-            </div>
-            <textarea 
-              rows={8} 
-              value={jdText} 
-              onChange={e => setJdText(e.target.value)}
-              placeholder="Paste the job requirements here..."
-            />
-          </div>
-        </div>
-        
-        <div className="mt-4">
-          <label className="mb-2 block text-secondary font-medium">Mandatory Rule Notes (Optional)</label>
-          <textarea 
-            rows={3} 
-            value={ruleNotes} 
-            onChange={e => setRuleNotes(e.target.value)}
-            placeholder="E.g., Must have 24 months of React experience."
-          />
-        </div>
-        
-        <div className="flex justify-between items-center mt-6">
-          {error && <span className="text-error">{error}</span>}
-          <button className="btn btn-primary ml-auto" onClick={handleExtract} disabled={isLoading}>
-            {isLoading ? <div className="spinner"></div> : <><Activity /> Analyze & Extract</>}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderReview = () => {
-    if (!screeningReq) return null;
-    return (
-      <div className="animate-fade-in flex-col gap-6">
-        <div className="glass-panel w-full">
-          <h2 className="flex items-center gap-2"><Briefcase /> Human-in-the-Loop Review</h2>
-          <p>Review the AI-extracted skills and adjust them if necessary before final scoring.</p>
-          
-          <div className="mt-6">
-            <h3>Extracted Skills</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Skill</th>
-                  <th>Months</th>
-                  <th>Evidence Snippet</th>
-                </tr>
-              </thead>
-              <tbody>
-                {screeningReq.candidate.skills.map((s: any, idx: number) => (
-                  <tr key={idx}>
-                    <td>
-                      <input 
-                        value={s.skill} 
-                        onChange={e => {
-                          const newReq = {...screeningReq};
-                          newReq.candidate.skills[idx].skill = e.target.value;
-                          setScreeningReq(newReq);
-                        }} 
-                      />
-                    </td>
-                    <td>
-                      <input 
-                        type="number" 
-                        value={s.months} 
-                        onChange={e => {
-                          const newReq = {...screeningReq};
-                          newReq.candidate.skills[idx].months = parseInt(e.target.value) || 0;
-                          setScreeningReq(newReq);
-                        }} 
-                      />
-                    </td>
-                    <td className="text-secondary text-sm">
-                      {s.evidence && s.evidence.length > 0 ? s.evidence[0].snippet : "No evidence"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mt-6">
-            <h3>Extracted Fields Review</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Field Name</th>
-                  <th>AI Value</th>
-                  <th>Human Value</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {screeningReq.candidate.fields_for_review?.map((f: any, idx: number) => (
-                  <tr key={idx}>
-                    <td className="text-secondary font-medium">{f.name.replace(/_/g, " ").toUpperCase()}</td>
-                    <td className="text-secondary">{f.ai_value || "-"}</td>
-                    <td>
-                      <input 
-                        value={f.human_value || ''} 
-                        onChange={e => {
-                          const newReq = {...screeningReq};
-                          newReq.candidate.fields_for_review[idx].human_value = e.target.value;
-                          if (e.target.value) {
-                             newReq.candidate.fields_for_review[idx].review_status = 'corrected';
-                          }
-                          setScreeningReq(newReq);
-                        }} 
-                        placeholder="Enter correction..."
-                        style={{ padding: '0.25rem 0.5rem' }}
-                      />
-                    </td>
-                    <td>
-                      <select 
-                        value={f.review_status} 
-                        onChange={e => {
-                          const newReq = {...screeningReq};
-                          newReq.candidate.fields_for_review[idx].review_status = e.target.value;
-                          setScreeningReq(newReq);
-                        }}
-                        style={{ padding: '0.25rem 0.5rem', width: 'auto' }}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="corrected">Corrected</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex justify-between items-center mt-6">
-            <button className="btn" onClick={() => setPhase('INGEST')} style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>Back</button>
-            <button className="btn btn-primary" onClick={handleScreening} disabled={isLoading}>
-              {isLoading ? <div className="spinner"></div> : <><ArrowRight /> Run Scoring Rules</>}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+  const updateSkill = (index: number, patch: Partial<SkillExperience>) => {
+    setScreeningReq((current) => {
+      if (!current) return current
+      const skills = current.candidate.skills ?? []
+      return {
+        ...current,
+        candidate: {
+          ...current.candidate,
+          skills: skills.map((skill, skillIndex) => (skillIndex === index ? { ...skill, ...patch } : skill)),
+        },
+      }
+    })
   }
 
-  const renderResult = () => {
-    if (!screeningRes) return null;
-    return (
-      <div className="animate-fade-in flex-col gap-6">
-        <div className="glass-panel w-full text-center">
-          <h1>{screeningRes.recommendation.replace("_", " ").toUpperCase()}</h1>
-          <p className="mt-2 text-lg" style={{ color: 'white' }}>{screeningRes.explanation}</p>
-          <div className="flex justify-center gap-4 mt-4">
-            <div className="badge badge-neutral text-lg p-2 px-4">Score: {screeningRes.scores.final_score.toFixed(1)}</div>
-            <div className={`badge ${screeningRes.hard_fail ? 'badge-error' : 'badge-success'} text-lg p-2 px-4`}>
-              {screeningRes.hard_fail ? 'Hard Fail: YES' : 'Hard Fail: NO'}
-            </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-6 mt-6">
-          <div className="glass-panel">
-            <h3>Rule Evaluations</h3>
-            <div className="mt-4 flex flex-col gap-4">
-              {screeningRes.rule_results.map((rr, i) => (
-                <div key={i} className="p-4 rounded-lg" style={{ background: rr.passed ? 'var(--success-bg)' : 'var(--error-bg)', border: `1px solid ${rr.passed ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
-                  <div className="flex items-center gap-2 font-medium" style={{ color: rr.passed ? 'var(--success)' : 'var(--error)' }}>
-                    {rr.passed ? <CheckCircle size={18} /> : <XCircle size={18} />}
-                    {rr.rule_id}
-                  </div>
-                  <p className="mt-2 text-sm mb-0" style={{ color: 'white' }}>{rr.message}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="glass-panel">
-            <h3>Score Breakdown</h3>
-            <div className="mt-4 flex flex-col gap-4">
-              {Object.entries(screeningRes.scores).map(([k, v]) => {
-                if (k === 'final_score') return null;
-                return (
-                  <div key={k}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-secondary">{k.replace(/_/g, " ").toUpperCase()}</span>
-                      <span>{Number(v).toFixed(2)}</span>
-                    </div>
-                    <div className="w-full rounded-full h-2" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                      <div className="bg-primary h-2 rounded-full" style={{ width: `${Math.min(100, Number(v) * 100)}%` }}></div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-center mt-6">
-          <button className="btn" onClick={() => { setPhase('INGEST'); setScreeningReq(null); setScreeningRes(null); setResumeText(''); setJdText(''); }} style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }}>
-            <RefreshCw size={16} /> Start New Screening
-          </button>
-        </div>
-      </div>
-    )
+  const updateField = (index: number, patch: Partial<ExtractedField>) => {
+    setScreeningReq((current) => {
+      if (!current) return current
+      const fields = current.candidate.fields_for_review ?? []
+      return {
+        ...current,
+        candidate: {
+          ...current.candidate,
+          fields_for_review: fields.map((field, fieldIndex) => (fieldIndex === index ? { ...field, ...patch } : field)),
+        },
+      }
+    })
   }
 
   return (
-    <>
-      <div className="mb-8 text-center animate-fade-in">
-        <h1 className="mb-2">HR Intelligence Platform</h1>
-        <p>Agentic Candidate Screening & Verification</p>
-      </div>
+    <div className="dark min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-background/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary"><Activity className="size-4" aria-hidden="true" /></div>
+            <div className="min-w-0"><p className="truncate text-sm font-semibold tracking-tight text-foreground">HR Screening</p><p className="truncate text-xs text-muted-foreground">Evidence-backed candidate workbench</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex" aria-live="polite"><CircleDot className={`size-3 ${apiStatus === "online" ? "text-emerald-400" : apiStatus === "offline" ? "text-red-400" : "text-amber-400"}`} aria-hidden="true" />{apiStatus === "online" ? "API connected" : apiStatus === "offline" ? "API unavailable" : "Checking API"}</div>
+            <Button variant="outline" size="sm" onClick={reset}><RotateCcw className="size-3.5" aria-hidden="true" /> New screening</Button>
+          </div>
+        </div>
+      </header>
 
-      <div className="flex justify-center mb-8 gap-4 text-sm font-medium text-secondary animate-fade-in">
-        <div className={`flex items-center gap-2 ${phase === 'INGEST' ? 'text-primary' : ''}`}>
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${phase === 'INGEST' ? 'bg-primary text-white' : 'background: rgba(255,255,255,0.1)'}`} style={{ background: phase === 'INGEST' ? '' : 'rgba(255,255,255,0.1)' }}>1</div> Ingest
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 space-y-5"><PhaseStepper phase={phase} canNavigate={canNavigate} onNavigate={navigate} /><Separator className="h-px w-full" /></div>
+        {error && <Alert variant="destructive" className="mb-6"><AlertTitle>Action failed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+        <div className="mx-auto max-w-6xl">
+          {phase === "INGEST" && <IngestPhase resumeText={resumeText} jdText={jdText} ruleNotes={ruleNotes} isLoading={isLoading} error={null} onResumeTextChange={setResumeText} onJdTextChange={setJdText} onRuleNotesChange={setRuleNotes} onUpload={handleUpload} onExtract={handleExtract} />}
+          {phase === "REVIEW" && screeningReq && <ReviewPhase request={screeningReq} isLoading={isLoading} onSkillChange={updateSkill} onFieldChange={updateField} onBack={() => navigate("INGEST")} onSubmit={handleScreening} />}
+          {phase === "RESULT" && screeningRes && <ResultPhase response={screeningRes} onReset={reset} />}
         </div>
-        <div className="w-8 h-[1px] bg-glass-border my-auto" style={{ background: 'rgba(255,255,255,0.1)' }}></div>
-        <div className={`flex items-center gap-2 ${phase === 'REVIEW' ? 'text-primary' : ''}`}>
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${phase === 'REVIEW' ? 'bg-primary text-white' : 'background: rgba(255,255,255,0.1)'}`} style={{ background: phase === 'REVIEW' ? '' : 'rgba(255,255,255,0.1)' }}>2</div> Review
-        </div>
-        <div className="w-8 h-[1px] bg-glass-border my-auto" style={{ background: 'rgba(255,255,255,0.1)' }}></div>
-        <div className={`flex items-center gap-2 ${phase === 'RESULT' ? 'text-primary' : ''}`}>
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${phase === 'RESULT' ? 'bg-primary text-white' : 'background: rgba(255,255,255,0.1)'}`} style={{ background: phase === 'RESULT' ? '' : 'rgba(255,255,255,0.1)' }}>3</div> Result
-        </div>
-      </div>
-
-      {phase === 'INGEST' && renderIngest()}
-      {phase === 'REVIEW' && renderReview()}
-      {phase === 'RESULT' && renderResult()}
-    </>
+      </main>
+      <footer className="mx-auto flex max-w-7xl items-center justify-between border-t border-border px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:px-8"><span>Human review stays in the loop.</span><span className="hidden sm:inline">{API_URL}</span></footer>
+    </div>
   )
 }
+
+export default App

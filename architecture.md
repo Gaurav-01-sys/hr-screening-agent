@@ -87,6 +87,7 @@ You will likely want these tables:
 - `location_required`
 - `notice_period_max_days`
 - `work_authorization_required`
+- `domain_required`
 
 ## RAG guidance
 
@@ -98,3 +99,14 @@ Use retrieval only for reference corpora such as:
 - internal hiring rubric library
 
 Do not use retrieval to decide numeric thresholds if they are already provided in the JD or rule set.
+
+## Downstream outputs
+
+The recommendation response contains bounded downstream artifacts: ranked
+strengths, concerns, and factual resume flags; structured interview questions
+anchored to matched skills and failed rules; and a draft-only communication
+that requires human verification before sending.
+
+`POST /screen/batch` reuses the same reviewed candidate schema and rubric for
+multi-candidate workflows, then sorts by deterministic final score. It does not
+call an LLM to rank candidates and does not send communications.

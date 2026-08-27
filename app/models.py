@@ -33,7 +33,17 @@ class CandidateModel(Base):
     run_id = Column(Integer, ForeignKey("screening_runs.id"))
     candidate_id = Column(String)
     full_name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    current_title = Column(String, nullable=True)
+    current_company = Column(String, nullable=True)
     total_experience_months = Column(Integer)
+    domains = Column(JSON)
+    certifications = Column(JSON)
+    work_authorization = Column(String, nullable=True)
+    notice_period_days = Column(Integer, nullable=True)
+    red_flags = Column(JSON)
     
     run = relationship("ScreeningRun", back_populates="candidate")
     skills = relationship("SkillModel", back_populates="candidate", cascade="all, delete-orphan")
@@ -59,6 +69,7 @@ class ExperienceModel(Base):
     start_date = Column(String)
     end_date = Column(String, nullable=True)
     skills_used = Column(JSON)
+    domains = Column(JSON)
     evidence = Column(JSON)
     
     candidate = relationship("CandidateModel", back_populates="experiences")
@@ -84,6 +95,10 @@ class JobModel(Base):
     mandatory_skills = Column(JSON)
     preferred_skills = Column(JSON)
     required_domains = Column(JSON)
+    location = Column(String, nullable=True)
+    work_authorization_required = Column(String, nullable=True)
+    max_notice_period_days = Column(Integer, nullable=True)
+    red_flags = Column(JSON)
     
     run = relationship("ScreeningRun", back_populates="job")
 
@@ -97,6 +112,7 @@ class RuleModel(Base):
     weight = Column(Integer)
     skill = Column(String, nullable=True)
     min_months = Column(Integer, nullable=True)
+    max_days = Column(Integer, nullable=True)
     domain = Column(String, nullable=True)
     expected_value = Column(String, nullable=True)
     

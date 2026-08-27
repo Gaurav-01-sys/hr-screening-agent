@@ -5,6 +5,7 @@ from datetime import date
 from .schemas import (
     CandidateProfile,
     Evidence,
+    EducationEntry,
     ExperienceEntry,
     ExtractedField,
     JobRequirement,
@@ -34,6 +35,10 @@ def build_sample_request() -> ScreeningRequest:
     candidate = CandidateProfile(
         candidate_id="cand-001",
         full_name="Sample Candidate",
+        email="candidate@example.com",
+        location="Remote",
+        current_title="Data Analyst",
+        current_company="Example Corp",
         total_experience_months=30,
         skills=[
             SkillExperience(skill="Tableau", months=3, evidence=[tableau_evidence]),
@@ -46,9 +51,13 @@ def build_sample_request() -> ScreeningRequest:
                 start_date=date(2024, 1, 1),
                 end_date=date(2024, 3, 31),
                 skills_used=["Tableau", "SQL"],
+                domains=["Retail"],
                 evidence=[tableau_evidence, sql_evidence],
             )
         ],
+        education=[EducationEntry(degree="BSc", field="Statistics", school="Example University", year=2023)],
+        domains=["Retail"],
+        certifications=["Tableau Desktop Specialist"],
         fields_for_review=[
             ExtractedField(
                 name="tableau_experience_months",

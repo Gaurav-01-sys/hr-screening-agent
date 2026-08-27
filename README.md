@@ -70,6 +70,11 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for the API.
 
+The API also exposes `POST /screen/batch`. Send a shared `job` and `rules`
+with a `candidates` array containing reviewed `CandidateProfile` objects; the
+response returns deterministic rank order and the same evidence-backed result
+artifacts as `/screen`.
+
 ## Run Streamlit
 
 ```powershell
@@ -86,6 +91,13 @@ The Streamlit app gives HR an interactive workbench to:
 - review and correct AI-extracted fields
 - configure mandatory rules
 - run scoring and see explainable rule results
+- review structured interview questions personalized to the candidate's evidence
+- inspect a draft-only interview/rejection communication (never sent automatically)
+- screen and rank multiple reviewed candidates through `POST /screen/batch`
+
+Communication drafts use a natural recruiter tone. Their prompt context is
+organized with a bounded MemPalace-inspired wing/room/drawer structure while
+keeping the source evidence traceable and local.
 
 ## Groq integration
 
@@ -100,3 +112,15 @@ The app still uses deterministic Python logic for:
 - hard-fail checks
 - score calculation
 - final recommendation policy
+
+When `GROQ_API_KEY` is available, the draft communication is lightly polished
+with a natural recruiter-tone prompt grounded in the reviewed facts. If the
+model is unavailable, the same response path falls back to the local
+plain-language templates.
+
+## HR skills and upstream design notes
+
+See [`docs/hr-skills-integration.md`](docs/hr-skills-integration.md) for the
+review of `hr-skills-dev.zip`, the selected assessment/interview/fairness
+patterns incorporated here, and the comparison with the referenced
+`RareBeacon/ai-hr-screening-agent` repository.

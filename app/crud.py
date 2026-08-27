@@ -23,7 +23,17 @@ def save_screening_run(db: Session, request: schemas.ScreeningRequest, response:
         run_id=db_run.id,
         candidate_id=request.candidate.candidate_id,
         full_name=request.candidate.full_name,
-        total_experience_months=request.candidate.total_experience_months
+        email=request.candidate.email,
+        phone=request.candidate.phone,
+        location=request.candidate.location,
+        current_title=request.candidate.current_title,
+        current_company=request.candidate.current_company,
+        total_experience_months=request.candidate.total_experience_months,
+        domains=request.candidate.domains,
+        certifications=request.candidate.certifications,
+        work_authorization=request.candidate.work_authorization,
+        notice_period_days=request.candidate.notice_period_days,
+        red_flags=request.candidate.red_flags,
     )
     db.add(db_candidate)
     db.flush()
@@ -44,6 +54,7 @@ def save_screening_run(db: Session, request: schemas.ScreeningRequest, response:
             start_date=str(exp.start_date),
             end_date=str(exp.end_date) if exp.end_date else None,
             skills_used=exp.skills_used,
+            domains=exp.domains,
             evidence=[e.model_dump() for e in exp.evidence]
         ))
         
@@ -63,7 +74,11 @@ def save_screening_run(db: Session, request: schemas.ScreeningRequest, response:
         min_total_experience_months=request.job.min_total_experience_months,
         mandatory_skills=request.job.mandatory_skills,
         preferred_skills=request.job.preferred_skills,
-        required_domains=request.job.required_domains
+        required_domains=request.job.required_domains,
+        location=request.job.location,
+        work_authorization_required=request.job.work_authorization_required,
+        max_notice_period_days=request.job.max_notice_period_days,
+        red_flags=request.job.red_flags,
     )
     db.add(db_job)
 
@@ -76,6 +91,7 @@ def save_screening_run(db: Session, request: schemas.ScreeningRequest, response:
             weight=rule.weight,
             skill=rule.skill,
             min_months=rule.min_months,
+            max_days=rule.max_days,
             domain=rule.domain,
             expected_value=rule.expected_value
         ))

@@ -5,7 +5,13 @@ from __future__ import annotations
 
 import pytest
 from pathlib import Path
-from playwright.sync_api import Page, expect
+from typing import Any
+
+try:
+    from playwright.sync_api import Page, expect
+except ImportError:  # Unit tests do not require the optional browser dependency.
+    Page = Any
+    expect = None
 
 # ---------------------------------------------------------------------------
 # Paths to test fixtures
