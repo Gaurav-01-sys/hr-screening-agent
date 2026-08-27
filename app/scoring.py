@@ -8,6 +8,7 @@ from .interview import generate_interview_questions
 from .normalizer import comparison_key, skill_matches
 from .schemas import (
     CandidateProfile,
+    ExtractedField,
     JobRequirement,
     Recommendation,
     RuleResult,
@@ -72,16 +73,23 @@ def _recency(candidate: CandidateProfile) -> float:
     return sum(scores) / len(scores)
 
 
+def _field_needs_review(field: ExtractedField) -> bool:
+    if field.review_status.value in {"pending", "rejected"}:
+        return True
+    if field.review_status.value == "corrected" and not field.human_value:
+        return True
+    if field.review_status.value == "approved" and not (field.human_value or field.ai_value):
+        return True
+    return False
+
+
 def build_screening_response(
     candidate: CandidateProfile,
     job: JobRequirement,
     rule_results: List[RuleResult],
 ) -> ScreeningResponse:
     hard_fail = any(not item.passed and item.severity == Severity.hard_fail for item in rule_results)
-    review_required = any(
-        field.review_status.value in {"pending", "rejected"}
-        for field in candidate.fields_for_review
-    )
+    review_required = any(_field_needs_review(field) for field in candidate.fields_for_review)
 
     mandatory_skills = list(dict.fromkeys(job.mandatory_skills))
     preferred_skills = list(dict.fromkeys(job.preferred_skills))

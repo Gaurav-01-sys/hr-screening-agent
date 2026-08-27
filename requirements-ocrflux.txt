@@ -1,5 +1,0 @@
-# Optional GPU installation for OCRFlux local inference.
-# OCRFlux's official package includes vLLM and PyTorch and should be installed
-# in a clean Python 3.11 environment with a supported NVIDIA GPU.
---find-links https://flashinfer.ai/whl/cu124/torch2.5/flashinfer/
-ocrflux @ git+https://github.com/chatdoc-com/OCRFlux.git

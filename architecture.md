@@ -4,7 +4,7 @@
 
 Use a small number of narrowly-scoped agents:
 
-- `Parsing agent`: uses OCRFlux Markdown output for complex/scanned PDFs and prepares document chunks with provenance
+- `Parsing agent`: uses local PDFium text extraction for PDFs and prepares document chunks with provenance
 - `Extraction agent`: extracts candidate and JD facts into JSON
 - `Review assistant`: explains extracted values to the human reviewer and highlights low-confidence fields
 - `Recommendation agent`: converts deterministic results into HR-facing rationale

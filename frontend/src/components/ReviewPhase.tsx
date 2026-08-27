@@ -8,13 +8,14 @@ import { ScrollArea } from "./ui/scroll-area"
 import { Select } from "./ui/select"
 import { Skeleton } from "./ui/skeleton"
 import { cn } from "../lib/utils"
-import type { ExtractedField, ScreeningRequest, SkillExperience } from "../types"
+import type { CandidateProfile, ExtractedField, ScreeningRequest, SkillExperience } from "../types"
 
 interface ReviewPhaseProps {
   request: ScreeningRequest
   isLoading: boolean
   onSkillChange: (index: number, patch: Partial<SkillExperience>) => void
   onFieldChange: (index: number, patch: Partial<ExtractedField>) => void
+  onCandidateChange: (patch: Partial<Pick<CandidateProfile, "full_name" | "email" | "location" | "work_authorization" | "notice_period_days" | "total_experience_months">>) => void
   onBack: () => void
   onSubmit: () => Promise<void>
 }
@@ -30,7 +31,7 @@ function evidenceText(field: { evidence?: Array<{ snippet?: string }> }): string
   return field.evidence?.[0]?.snippet?.trim() || "No evidence captured"
 }
 
-export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, onBack, onSubmit }: ReviewPhaseProps) {
+export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, onCandidateChange, onBack, onSubmit }: ReviewPhaseProps) {
   const skills = request.candidate.skills ?? []
   const fields = request.candidate.fields_for_review ?? []
   return (
@@ -41,7 +42,7 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
           <h1 id="review-title" className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Verify extracted facts</h1>
           <Badge variant="outline">Human review required</Badge>
         </div>
-        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Correct the fields that affect screening. Evidence snippets stay read-only so every edit remains traceable.</p>
+        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">Correct the fields that affect screening, then mark each reviewed field as Approved or Corrected. Evidence snippets stay read-only so every edit remains traceable.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -77,9 +78,13 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <div className="space-y-2"><Label>Candidate</Label><p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-foreground">{request.candidate.full_name || "Unnamed candidate"}</p></div>
+              <div className="space-y-2"><Label htmlFor="candidate-name">Candidate name</Label><Input id="candidate-name" value={request.candidate.full_name ?? ""} onChange={(event) => onCandidateChange({ full_name: event.target.value })} /></div>
               <div className="space-y-2"><Label>Role</Label><p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-foreground">{request.job.role_title || "Untitled role"}</p></div>
-              <div className="space-y-2"><Label htmlFor="total-experience">Total experience (months)</Label><Input id="total-experience" type="number" value={request.candidate.total_experience_months ?? 0} readOnly /></div>
+              <div className="space-y-2"><Label htmlFor="candidate-email">Email</Label><Input id="candidate-email" type="email" value={request.candidate.email ?? ""} onChange={(event) => onCandidateChange({ email: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="candidate-location">Location</Label><Input id="candidate-location" value={request.candidate.location ?? ""} onChange={(event) => onCandidateChange({ location: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="candidate-authorization">Work authorization</Label><Input id="candidate-authorization" value={request.candidate.work_authorization ?? ""} onChange={(event) => onCandidateChange({ work_authorization: event.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="candidate-notice">Notice period (days)</Label><Input id="candidate-notice" type="number" min={0} value={request.candidate.notice_period_days ?? ""} onChange={(event) => onCandidateChange({ notice_period_days: event.target.value === "" ? null : Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} /></div>
+              <div className="space-y-2"><Label htmlFor="total-experience">Total experience (months)</Label><Input id="total-experience" type="number" min={0} value={request.candidate.total_experience_months ?? 0} onChange={(event) => onCandidateChange({ total_experience_months: Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} /></div>
               <div className="space-y-2"><Label>Mandatory skills</Label><p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">{request.job.mandatory_skills?.join(", ") || "None specified"}</p></div>
             </div>
           </CardContent>
@@ -102,7 +107,7 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
                     return <tr key={`${field.name}-${index}`} className="align-middle">
                       <td className="px-4 py-3 font-medium text-foreground">{field.name.replaceAll("_", " ")}</td>
                       <td className="max-w-xs px-4 py-3 text-muted-foreground"><span title={String(field.ai_value ?? "")} className="line-clamp-2">{String(field.ai_value ?? "—")}</span></td>
-                      <td className="px-4 py-3"><Label htmlFor={`human-value-${index}`} className="sr-only">Human value for {field.name}</Label><Input id={`human-value-${index}`} value={field.human_value ?? ""} placeholder="Add a correction" onChange={(event) => onFieldChange(index, { human_value: event.target.value, review_status: event.target.value.trim() ? "corrected" : status })} /></td>
+                      <td className="px-4 py-3"><Label htmlFor={`human-value-${index}`} className="sr-only">Human value for {field.name}</Label><Input id={`human-value-${index}`} value={field.human_value ?? ""} placeholder="Add a correction" onChange={(event) => onFieldChange(index, { human_value: event.target.value, review_status: event.target.value.trim() ? "corrected" : "pending" })} /></td>
                       <td className="px-4 py-3"><div className="flex items-center gap-2"><Select aria-label={`Review status for ${field.name}`} value={status} onChange={(event) => onFieldChange(index, { review_status: event.target.value as ExtractedField["review_status"] })}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="corrected">Corrected</option></Select><Badge variant={statusVariant(status)}>{status}</Badge></div></td>
                     </tr>
                   })}

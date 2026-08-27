@@ -8,9 +8,31 @@ import { IngestPhase } from "./components/IngestPhase"
 import { ReviewPhase } from "./components/ReviewPhase"
 import { ResultPhase } from "./components/ResultPhase"
 import { API_URL, extractScreening, getApiErrorMessage, getHealth, parseDocument, screenCandidate } from "./lib/api"
-import type { ExtractedField, HealthResponse, Phase, ScreeningRequest, ScreeningResponse, SkillExperience } from "./types"
+import type { CandidateProfile, ExtractedField, HealthResponse, Phase, ReviewStatus, ScreeningRequest, ScreeningResponse, SkillExperience } from "./types"
 
 type ApiStatus = "checking" | "online" | "offline"
+type EditableCandidateFields = Pick<CandidateProfile, "full_name" | "email" | "location" | "work_authorization" | "notice_period_days" | "total_experience_months">
+
+const reviewFieldTargets: Record<string, keyof EditableCandidateFields> = {
+  name: "full_name",
+  "full name": "full_name",
+  fullname: "full_name",
+  email: "email",
+  location: "location",
+  "work authorization": "work_authorization",
+  workauthorization: "work_authorization",
+  "notice period": "notice_period_days",
+  "notice period days": "notice_period_days",
+  noticeperioddays: "notice_period_days",
+  "total experience": "total_experience_months",
+  "total experience months": "total_experience_months",
+  totalexperiencemonths: "total_experience_months",
+}
+
+function reviewFieldTarget(name: string): keyof EditableCandidateFields | null {
+  const normalized = name.toLowerCase().replaceAll("_", " ").trim()
+  return reviewFieldTargets[normalized] ?? reviewFieldTargets[normalized.replaceAll(" ", "")] ?? null
+}
 
 function App() {
   const [phase, setPhase] = useState<Phase>("INGEST")
@@ -140,6 +162,24 @@ function App() {
     })
   }
 
+  const updateCandidate = (patch: Partial<EditableCandidateFields>) => {
+    setScreeningReq((current) => {
+      if (!current) return current
+      const entries = Object.entries(patch) as Array<[keyof EditableCandidateFields, EditableCandidateFields[keyof EditableCandidateFields]]>
+      const fields = current.candidate.fields_for_review ?? []
+      const updatedFields = fields.map((field) => {
+        const target = reviewFieldTarget(field.name)
+        const entry = entries.find(([key]) => key === target)
+        if (!entry) return field
+        const value = entry[1]
+        const humanValue = value === null || value === undefined ? "" : String(value)
+        const reviewStatus: ReviewStatus = humanValue.trim() ? "corrected" : "pending"
+        return { ...field, human_value: humanValue || null, review_status: reviewStatus }
+      })
+      return { ...current, candidate: { ...current.candidate, ...patch, fields_for_review: updatedFields } }
+    })
+  }
+
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background/95">
@@ -160,7 +200,7 @@ function App() {
         {error && <Alert variant="destructive" className="mb-6"><AlertTitle>Action failed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
         <div className="mx-auto max-w-6xl">
           {phase === "INGEST" && <IngestPhase resumeText={resumeText} jdText={jdText} ruleNotes={ruleNotes} isLoading={isLoading} error={null} onResumeTextChange={setResumeText} onJdTextChange={setJdText} onRuleNotesChange={setRuleNotes} onUpload={handleUpload} onExtract={handleExtract} />}
-          {phase === "REVIEW" && screeningReq && <ReviewPhase request={screeningReq} isLoading={isLoading} onSkillChange={updateSkill} onFieldChange={updateField} onBack={() => navigate("INGEST")} onSubmit={handleScreening} />}
+          {phase === "REVIEW" && screeningReq && <ReviewPhase request={screeningReq} isLoading={isLoading} onSkillChange={updateSkill} onFieldChange={updateField} onCandidateChange={updateCandidate} onBack={() => navigate("INGEST")} onSubmit={handleScreening} />}
           {phase === "RESULT" && screeningRes && <ResultPhase response={screeningRes} onReset={reset} />}
         </div>
       </main>

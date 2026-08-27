@@ -42,6 +42,73 @@ def test_job_related_rules_cover_education_location_notice_and_authorization():
     assert all(item.passed for item in evaluate_rules(candidate, rules))
 
 
+def test_human_review_overrides_are_applied_before_rules():
+    candidate = CandidateProfile(
+        candidate_id="c-review",
+        location="Remote",
+        total_experience_months=12,
+        fields_for_review=[
+            ExtractedField(
+                name="Location",
+                ai_value="Remote",
+                human_value="Toronto, Canada",
+                review_status=ReviewStatus.corrected,
+            ),
+            ExtractedField(
+                name="Total Experience",
+                ai_value="12 months",
+                human_value="2 years",
+                review_status=ReviewStatus.corrected,
+            ),
+        ],
+    )
+
+    normalized = normalize_candidate_profile(candidate)
+
+    assert normalized.location == "Toronto, Canada"
+    assert normalized.total_experience_months == 24
+    assert evaluate_rules(
+        normalized,
+        [MandatoryRule(id="loc", type="location_required", severity=Severity.hard_fail, expected_value="Canada")],
+    )[0].passed is True
+
+
+def test_rejected_review_value_is_removed_before_screening():
+    candidate = CandidateProfile(
+        candidate_id="c-rejected",
+        location="Remote",
+        fields_for_review=[
+            ExtractedField(
+                name="Location",
+                ai_value="Remote",
+                review_status=ReviewStatus.rejected,
+            )
+        ],
+    )
+
+    normalized = normalize_candidate_profile(candidate)
+
+    assert normalized.location is None
+
+
+def test_pending_ai_value_does_not_replace_a_direct_reviewer_edit():
+    candidate = CandidateProfile(
+        candidate_id="c-direct",
+        location="Toronto, Canada",
+        fields_for_review=[
+            ExtractedField(
+                name="Location",
+                ai_value="Remote",
+                review_status=ReviewStatus.pending,
+            )
+        ],
+    )
+
+    normalized = normalize_candidate_profile(candidate)
+
+    assert normalized.location == "Toronto, Canada"
+
+
 def test_pending_review_cannot_produce_positive_automatic_recommendation():
     candidate = CandidateProfile(
         candidate_id="c-3",

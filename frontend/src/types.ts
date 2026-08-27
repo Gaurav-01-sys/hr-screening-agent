@@ -42,6 +42,8 @@ export interface CandidateProfile extends Record<string, unknown> {
   current_title?: string | null
   current_company?: string | null
   total_experience_months?: number
+  work_authorization?: string | null
+  notice_period_days?: number | null
   skills?: SkillExperience[]
   experiences?: ExperienceEntry[]
   fields_for_review?: ExtractedField[]

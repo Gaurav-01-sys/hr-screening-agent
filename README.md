@@ -4,7 +4,7 @@ This repository contains a starter architecture for an HR analyst workflow that 
 
 ## Design goals
 
-- Use OCRFlux or an equivalent parser to extract readable Markdown from complex, scanned, and table-heavy PDFs.
+- Use PDFium for local, selectable-text PDF extraction and `python-docx` for DOCX parsing.
 - Keep LLM usage narrow: extraction, normalization suggestions, and explanation generation.
 - Keep scoring, date arithmetic, and threshold checks deterministic.
 - Make every extracted field reviewable by a human before a recommendation is produced.
@@ -55,20 +55,13 @@ Create a `.env` file in the project root:
 ```env
 GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=openai/gpt-oss-20b
-
-# Optional: point PDF OCR at an OCRFlux OpenAI-compatible server.
-# OCRFLUX_URL=http://localhost:30024
-# OCRFLUX_MODEL=ChatDOC/OCRFlux-3B
 ```
 
 `GROQ_MODEL` is optional. If omitted, the app defaults to `openai/gpt-oss-20b`.
 
-PDF parsing uses OCRFlux when `OCRFLUX_URL` points to an OCRFlux server. For
-local GPU inference instead, install [`requirements-ocrflux.txt`](requirements-ocrflux.txt)
-in a clean Python 3.11 environment and set `OCRFLUX_MODEL_PATH` to a local
-OCRFlux model directory. OCRFlux requires a supported NVIDIA GPU; when it is
-not configured or unavailable, the app falls back to `pypdf` for text-based
-PDFs. DOCX files continue to use `python-docx`.
+PDF parsing uses `pypdfium2` for selectable text and keeps page order. Scanned
+PDFs without a text layer return no extracted text and should be converted to
+searchable PDF before upload. DOCX files use `python-docx`.
 
 ## Run API
 
@@ -140,10 +133,6 @@ The app still uses deterministic Python logic for:
 - hard-fail checks
 - score calculation
 - final recommendation policy
-
-OCRFlux is used only for document-to-Markdown conversion. It is not used for
-candidate scoring or recommendation decisions. See the [OCRFlux project](https://github.com/chatdoc-com/OCRFlux)
-for the model/server setup and GPU requirements.
 
 When `GROQ_API_KEY` is available, the draft communication is lightly polished
 with a natural recruiter-tone prompt grounded in the reviewed facts. If the

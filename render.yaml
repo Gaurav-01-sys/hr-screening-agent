@@ -18,12 +18,6 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: openai/gpt-oss-20b
-      - key: OCRFLUX_URL
-        sync: false
-      - key: OCRFLUX_API_KEY
-        sync: false
-      - key: OCRFLUX_MODEL
-        value: ChatDOC/OCRFlux-3B
 
   - type: web
     name: hr-screening-frontend
@@ -52,9 +46,3 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: openai/gpt-oss-20b
-      - key: OCRFLUX_URL
-        sync: false
-      - key: OCRFLUX_API_KEY
-        sync: false
-      - key: OCRFLUX_MODEL
-        value: ChatDOC/OCRFlux-3B
