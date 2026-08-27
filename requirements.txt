@@ -5,6 +5,7 @@ pydantic
 groq
 streamlit
 pypdf
+pypdfium2
+Pillow
 python-docx
 sqlalchemy
-docling

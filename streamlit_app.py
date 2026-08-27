@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import date
-from io import BytesIO
-from pathlib import Path
 from typing import Any, Dict, List
 
 import streamlit as st
@@ -26,6 +24,7 @@ from app.schemas import (
 )
 from app.database import SessionLocal, ensure_database_schema
 from app.crud import save_screening_run
+from app.document_parser import extract_uploaded_text
 from app.normalizer import normalize_candidate_profile
 
 # Ensure tables and additive schema updates are applied.
@@ -139,66 +138,6 @@ def _ensure_session() -> None:
         _blank_session()
 
 
-def _normalize_text(text: str) -> str:
-    cleaned_lines = [line.rstrip() for line in text.splitlines()]
-    normalized: List[str] = []
-    previous_blank = False
-
-    for line in cleaned_lines:
-        is_blank = not line.strip()
-        if is_blank and previous_blank:
-            continue
-        normalized.append(line)
-        previous_blank = is_blank
-
-    return "\n".join(normalized).strip()
-
-
-def _extract_with_docling(file_name: str, file_bytes: bytes) -> str:
-    try:
-        from docling.datamodel.base_models import DocumentStream
-        from docling.document_converter import DocumentConverter
-    except ImportError:
-        return ""
-
-    try:
-        stream = DocumentStream(name=file_name, stream=BytesIO(file_bytes))
-        result = DocumentConverter().convert(stream)
-        return _normalize_text(result.document.export_to_markdown())
-    except Exception as e:
-        print(f"Docling extraction failed: {e}")
-        return ""
-
-
-def _extract_pdf_text(file_name: str, file_bytes: bytes) -> str:
-    docling_text = _extract_with_docling(file_name, file_bytes)
-    if docling_text:
-        return docling_text
-
-    from pypdf import PdfReader
-
-    reader = PdfReader(BytesIO(file_bytes))
-    parts = [page.extract_text() or "" for page in reader.pages]
-    return _normalize_text("\n\n".join(parts))
-
-
-def _extract_docx_text(file_bytes: bytes) -> str:
-    from docx import Document
-
-    document = Document(BytesIO(file_bytes))
-    parts = [paragraph.text for paragraph in document.paragraphs if paragraph.text.strip()]
-    return _normalize_text("\n".join(parts))
-
-
-def _extract_uploaded_text(file_name: str, file_bytes: bytes) -> str:
-    suffix = Path(file_name).suffix.lower()
-    if suffix == ".pdf":
-        return _extract_pdf_text(file_name, file_bytes)
-    if suffix == ".docx":
-        return _extract_docx_text(file_bytes)
-    raise ValueError(f"Unsupported file type: {suffix or 'unknown'}")
-
-
 def _sync_uploaded_text(
     uploaded_file: Any,
     *,
@@ -217,7 +156,7 @@ def _sync_uploaded_text(
         return
 
     try:
-        extracted_text = _extract_uploaded_text(uploaded_file.name, file_bytes)
+        extracted_text = extract_uploaded_text(uploaded_file.name, file_bytes)
     except Exception as exc:
         st.session_state[status_key] = {
             "fingerprint": fingerprint,
