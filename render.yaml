@@ -3,7 +3,8 @@
 # Create all three services with New > Blueprint in the Render dashboard.
 # VITE_API_URL must be set to the public URL of hr-screening-backend after
 # the backend service has been created (for example,
-# https://hr-screening-backend.onrender.com).
+# https://hr-screening-backend.onrender.com). Render prompts for this once,
+# during the initial Blueprint creation flow (it's a sync:false var below).
 
 services:
   - type: web
@@ -17,7 +18,8 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        # value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-20b   # swap in if you'd rather use this model
 
   - type: web
     name: hr-screening-frontend
@@ -44,4 +46,5 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
+        # value: llama-3.3-70b-versatile
+        value: openai/gpt-oss-20b   # swap in if you'd rather use this model
