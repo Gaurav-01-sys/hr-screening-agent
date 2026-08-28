@@ -191,7 +191,7 @@ INSTRUCTIONS:
    and any factual resume concerns as red_flags. Keep evidence snippets tied to the resume.
 2. Read the JD TEXT carefully. Extract the role title, experience requirements, and required/preferred skills.
    Also extract location, work authorization, maximum notice period, required domains, and explicit red flags.
-3. If MANDATORY RULE NOTES are provided, convert them into structured rules. Otherwise return an empty rules array.
+3. If MANDATORY RULE NOTES are provided, convert them into structured rules. Treat each stated minimum, required item, or must-have as a knockout with severity "hard_fail". Use severity "soft" only when the notes explicitly say preferred, nice-to-have, or soft requirement. Otherwise return an empty rules array.
 4. Return ONLY the JSON object below, filled with REAL data from the texts. Replace ALL example values.
 
 IMPORTANT: Convert years to months (e.g. 2 years = 24 months, 1.5 years = 18 months).
@@ -402,9 +402,9 @@ MANDATORY RULE NOTES:
     for item in _as_list(payload.get("rules")):
         if not isinstance(item, dict):
             continue
-        severity_value = str(item.get("severity", Severity.soft.value))
+        severity_value = str(item.get("severity", Severity.hard_fail.value))
         if severity_value not in {severity.value for severity in Severity}:
-            severity_value = Severity.soft.value
+            severity_value = Severity.hard_fail.value
         rule_id = str(item.get("id", "")).strip()
         rule_type = str(item.get("type", "")).strip()
         if not rule_type:

@@ -7,3 +7,4 @@ streamlit
 pypdfium2
 python-docx
 sqlalchemy
+agent-framework

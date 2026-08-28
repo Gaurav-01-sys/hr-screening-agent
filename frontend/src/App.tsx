@@ -7,6 +7,9 @@ import { PhaseStepper } from "./components/PhaseStepper"
 import { IngestPhase } from "./components/IngestPhase"
 import { ReviewPhase } from "./components/ReviewPhase"
 import { ResultPhase } from "./components/ResultPhase"
+import { ChatbotWidget } from "./components/ChatbotWidget"
+import { ThemeProvider } from "./components/ThemeProvider"
+import { ThemeToggle } from "./components/ThemeToggle"
 import { API_URL, extractScreening, getApiErrorMessage, getHealth, parseDocument, screenCandidate } from "./lib/api"
 import type { CandidateProfile, ExtractedField, HealthResponse, Phase, ReviewStatus, ScreeningRequest, ScreeningResponse, SkillExperience } from "./types"
 
@@ -181,31 +184,69 @@ function App() {
   }
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-background/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary"><Activity className="size-4" aria-hidden="true" /></div>
-            <div className="min-w-0"><p className="truncate text-sm font-semibold tracking-tight text-foreground">HR Screening</p><p className="truncate text-xs text-muted-foreground">Evidence-backed candidate workbench</p></div>
+    <ThemeProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+                <Activity className="size-4" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-tight text-foreground">HR Screening</p>
+                <p className="hidden truncate text-xs text-muted-foreground sm:block">Evidence-backed candidate workbench</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground sm:flex" aria-live="polite">
+                <CircleDot
+                  className={`size-2.5 ${apiStatus === "online" ? "text-emerald-500" : apiStatus === "offline" ? "text-red-500" : "text-amber-500"}`}
+                  aria-hidden="true"
+                />
+                {apiStatus === "online" ? "API connected" : apiStatus === "offline" ? "API unavailable" : "Checking…"}
+              </div>
+              <ThemeToggle />
+              <Button variant="outline" size="sm" onClick={reset}>
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">New screening</span>
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex" aria-live="polite"><CircleDot className={`size-3 ${apiStatus === "online" ? "text-emerald-400" : apiStatus === "offline" ? "text-red-400" : "text-amber-400"}`} aria-hidden="true" />{apiStatus === "online" ? "API connected" : apiStatus === "offline" ? "API unavailable" : "Checking API"}</div>
-            <Button variant="outline" size="sm" onClick={reset}><RotateCcw className="size-3.5" aria-hidden="true" /> New screening</Button>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 space-y-5"><PhaseStepper phase={phase} canNavigate={canNavigate} onNavigate={navigate} /><Separator className="h-px w-full" /></div>
-        {error && <Alert variant="destructive" className="mb-6"><AlertTitle>Action failed</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-        <div className="mx-auto max-w-6xl">
-          {phase === "INGEST" && <IngestPhase resumeText={resumeText} jdText={jdText} ruleNotes={ruleNotes} isLoading={isLoading} error={null} onResumeTextChange={setResumeText} onJdTextChange={setJdText} onRuleNotesChange={setRuleNotes} onUpload={handleUpload} onExtract={handleExtract} />}
-          {phase === "REVIEW" && screeningReq && <ReviewPhase request={screeningReq} isLoading={isLoading} onSkillChange={updateSkill} onFieldChange={updateField} onCandidateChange={updateCandidate} onBack={() => navigate("INGEST")} onSubmit={handleScreening} />}
-          {phase === "RESULT" && screeningRes && <ResultPhase response={screeningRes} onReset={reset} />}
-        </div>
-      </main>
-      <footer className="mx-auto flex max-w-7xl items-center justify-between border-t border-border px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:px-8"><span>Human review stays in the loop.</span><span className="hidden sm:inline">{API_URL}</span></footer>
-    </div>
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mb-8 space-y-5">
+            <PhaseStepper phase={phase} canNavigate={canNavigate} onNavigate={navigate} />
+            <Separator className="h-px w-full" />
+          </div>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Action failed</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <div className="mx-auto max-w-6xl">
+            {phase === "INGEST" && <IngestPhase resumeText={resumeText} jdText={jdText} ruleNotes={ruleNotes} isLoading={isLoading} error={null} onResumeTextChange={setResumeText} onJdTextChange={setJdText} onRuleNotesChange={setRuleNotes} onUpload={handleUpload} onExtract={handleExtract} />}
+            {phase === "REVIEW" && screeningReq && <ReviewPhase request={screeningReq} isLoading={isLoading} onSkillChange={updateSkill} onFieldChange={updateField} onCandidateChange={updateCandidate} onBack={() => navigate("INGEST")} onSubmit={handleScreening} />}
+            {phase === "RESULT" && screeningRes && <ResultPhase response={screeningRes} onReset={reset} />}
+          </div>
+        </main>
+
+        {screeningReq && (phase === "REVIEW" || phase === "RESULT") && (
+          <ChatbotWidget
+            key={screeningReq.candidate.candidate_id}
+            candidate={screeningReq.candidate}
+            job={screeningReq.job}
+            response={screeningRes}
+          />
+        )}
+
+        <footer className="mx-auto flex max-w-7xl items-center justify-between border-t border-border px-4 py-4 text-xs text-muted-foreground sm:px-6 lg:px-8">
+          <span>Human review stays in the loop.</span>
+          <span className="hidden font-mono sm:inline">{API_URL}</span>
+        </footer>
+      </div>
+    </ThemeProvider>
   )
 }
 

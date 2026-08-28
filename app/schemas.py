@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -168,6 +168,28 @@ class ScreeningResponse(BaseModel):
     next_action: str = "manual_review"
     interview_questions: List["InterviewQuestion"] = Field(default_factory=list)
     communication_draft: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    """A recruiter or assistant turn sent through the screening copilot."""
+
+    role: Literal["user", "assistant", "system"]
+    content: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ChatRequest(BaseModel):
+    """The current screening context plus the visible conversation history."""
+
+    messages: List[ChatMessage] = Field(default_factory=list)
+    candidate: CandidateProfile
+    job: JobRequirement
+    response: Optional[ScreeningResponse] = None
+
+
+class ChatResponse(BaseModel):
+    reply: ChatMessage
+    sources: List[str] = Field(default_factory=list)
 
 
 class BatchScreeningRequest(BaseModel):

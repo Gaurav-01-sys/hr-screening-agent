@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, UploadFile, File
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .document_parser import extract_uploaded_text
@@ -15,7 +16,10 @@ from .schemas import (
     RankedScreeningResult,
     ScreeningRequest,
     ScreeningResponse,
+    ChatRequest,
+    ChatResponse,
 )
+from .chat_agent import HRChatAgent
 from .database import SessionLocal, ensure_database_schema
 from .crud import save_screening_run
 from .normalizer import normalize_candidate_profile
@@ -83,6 +87,17 @@ def screen_candidate(payload: ScreeningRequest) -> ScreeningResponse:
         print(f"Failed to save screening run: {e}")
 
     return response
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(payload: ChatRequest) -> ChatResponse:
+    """Answer a recruiter question against the current screening memory."""
+
+    try:
+        agent = HRChatAgent(payload.candidate, payload.job, payload.response)
+        return await agent.respond(payload.messages)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="The recruiter chat agent could not complete the request.") from exc
 
 
 @app.post("/screen/batch", response_model=BatchScreeningResponse)

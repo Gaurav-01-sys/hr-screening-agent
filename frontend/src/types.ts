@@ -119,6 +119,26 @@ export interface ScreeningResponse extends Record<string, unknown> {
   communication_draft?: string | null
 }
 
+export type ChatRole = "user" | "assistant" | "system"
+
+export interface ChatMessage {
+  role: ChatRole
+  content: string
+  timestamp: string
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[]
+  candidate: CandidateProfile
+  job: JobRequirement
+  response?: ScreeningResponse | null
+}
+
+export interface ChatResponse {
+  reply: ChatMessage
+  sources: string[]
+}
+
 export interface ParseDocumentResponse {
   filename?: string
   text?: string

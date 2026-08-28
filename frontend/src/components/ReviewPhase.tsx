@@ -59,9 +59,9 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
                     <tr><th className="px-4 py-3 font-medium">Skill</th><th className="w-28 px-4 py-3 font-medium">Months</th><th className="px-4 py-3 font-medium">Evidence snippet</th></tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {skills.map((skill, index) => <tr key={`${skill.skill}-${index}`} className="align-top">
-                      <td className="px-4 py-3"><Label htmlFor={`skill-${index}`} className="sr-only">Skill {index + 1}</Label><Input id={`skill-${index}`} value={skill.skill} onChange={(event) => onSkillChange(index, { skill: event.target.value })} /></td>
-                      <td className="px-4 py-3"><Label htmlFor={`months-${index}`} className="sr-only">Months for {skill.skill}</Label><Input id={`months-${index}`} type="number" min={0} step={1} value={skill.months} onChange={(event) => onSkillChange(index, { months: Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} /></td>
+                    {skills.map((skill, index) => <tr key={`${skill.skill}-${index}`} className="align-top transition-colors hover:bg-muted/30">
+                      <td className="px-4 py-3"><Label htmlFor={`skill-${index}`} className="sr-only">Skill {index + 1}</Label><Input id={`skill-${index}`} value={skill.skill} onChange={(event) => onSkillChange(index, { skill: event.target.value })} className="bg-background" /></td>
+                      <td className="px-4 py-3"><Label htmlFor={`months-${index}`} className="sr-only">Months for {skill.skill}</Label><Input id={`months-${index}`} type="number" min={0} step={1} value={skill.months} onChange={(event) => onSkillChange(index, { months: Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} className="bg-background" /></td>
                       <td className="max-w-md px-4 py-3 text-muted-foreground"><span title={evidenceText(skill)} className="line-clamp-2">{evidenceText(skill)}</span></td>
                     </tr>)}
                   </tbody>
@@ -85,7 +85,7 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
               <div className="space-y-2"><Label htmlFor="candidate-authorization">Work authorization</Label><Input id="candidate-authorization" value={request.candidate.work_authorization ?? ""} onChange={(event) => onCandidateChange({ work_authorization: event.target.value })} /></div>
               <div className="space-y-2"><Label htmlFor="candidate-notice">Notice period (days)</Label><Input id="candidate-notice" type="number" min={0} value={request.candidate.notice_period_days ?? ""} onChange={(event) => onCandidateChange({ notice_period_days: event.target.value === "" ? null : Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} /></div>
               <div className="space-y-2"><Label htmlFor="total-experience">Total experience (months)</Label><Input id="total-experience" type="number" min={0} value={request.candidate.total_experience_months ?? 0} onChange={(event) => onCandidateChange({ total_experience_months: Math.max(0, Number.parseInt(event.target.value, 10) || 0) })} /></div>
-              <div className="space-y-2"><Label>Mandatory skills</Label><p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">{request.job.mandatory_skills?.join(", ") || "None specified"}</p></div>
+              <div className="space-y-2"><Label>Mandatory skills</Label><p className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-muted-foreground line-clamp-2" title={request.job.mandatory_skills?.join(", ")}>{request.job.mandatory_skills?.join(", ") || "None specified"}</p></div>
             </div>
           </CardContent>
         </Card>
@@ -100,15 +100,25 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
           {isLoading ? <TableSkeleton columns={4} /> : fields.length === 0 ? <EmptyTableState label="No review fields" /> : (
             <ScrollArea className="max-h-[430px] rounded-md border border-border">
               <table className="w-full min-w-[700px] text-left text-sm">
-                <thead className="sticky top-0 z-10 bg-card text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Field</th><th className="px-4 py-3 font-medium">AI value</th><th className="px-4 py-3 font-medium">Human value</th><th className="w-40 px-4 py-3 font-medium">Status</th></tr></thead>
+                <thead className="sticky top-0 z-10 bg-card text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Field</th><th className="px-4 py-3 font-medium">AI value</th><th className="px-4 py-3 font-medium">Human value</th><th className="w-48 px-4 py-3 font-medium">Status</th></tr></thead>
                 <tbody className="divide-y divide-border">
                   {fields.map((field, index) => {
                     const status = field.review_status ?? "pending"
-                    return <tr key={`${field.name}-${index}`} className="align-middle">
+                    return <tr key={`${field.name}-${index}`} className="align-middle transition-colors hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium text-foreground">{field.name.replaceAll("_", " ")}</td>
                       <td className="max-w-xs px-4 py-3 text-muted-foreground"><span title={String(field.ai_value ?? "")} className="line-clamp-2">{String(field.ai_value ?? "—")}</span></td>
-                      <td className="px-4 py-3"><Label htmlFor={`human-value-${index}`} className="sr-only">Human value for {field.name}</Label><Input id={`human-value-${index}`} value={field.human_value ?? ""} placeholder="Add a correction" onChange={(event) => onFieldChange(index, { human_value: event.target.value, review_status: event.target.value.trim() ? "corrected" : "pending" })} /></td>
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><Select aria-label={`Review status for ${field.name}`} value={status} onChange={(event) => onFieldChange(index, { review_status: event.target.value as ExtractedField["review_status"] })}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="corrected">Corrected</option></Select><Badge variant={statusVariant(status)}>{status}</Badge></div></td>
+                      <td className="px-4 py-3"><Label htmlFor={`human-value-${index}`} className="sr-only">Human value for {field.name}</Label><Input id={`human-value-${index}`} value={field.human_value ?? ""} placeholder="Add a correction" onChange={(event) => onFieldChange(index, { human_value: event.target.value, review_status: event.target.value.trim() ? "corrected" : "pending" })} className="bg-background" /></td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                          <Select aria-label={`Review status for ${field.name}`} value={status} onChange={(event) => onFieldChange(index, { review_status: event.target.value as ExtractedField["review_status"] })}>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="corrected">Corrected</option>
+                          </Select>
+                          <Badge variant={statusVariant(status)} className="shrink-0">{status}</Badge>
+                        </div>
+                      </td>
                     </tr>
                   })}
                 </tbody>
@@ -118,7 +128,7 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
         </CardContent>
       </Card>
 
-      <div className="sticky bottom-4 z-20 flex items-center justify-between rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+      <div className="sticky bottom-4 z-20 flex items-center justify-between rounded-xl border border-border bg-background/90 p-3 shadow-lg shadow-black/5 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <Button variant="outline" onClick={onBack}><ArrowLeft className="size-4" aria-hidden="true" /> Back to ingest</Button>
         <Button onClick={() => void onSubmit()} disabled={isLoading}>{isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />} Run scoring rules</Button>
       </div>
@@ -127,7 +137,7 @@ export function ReviewPhase({ request, isLoading, onSkillChange, onFieldChange, 
 }
 
 function EmptyTableState({ label }: { label: string }) {
-  return <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/10 px-4 text-sm text-muted-foreground">{label}</div>
+  return <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-border bg-muted/5 px-4 text-sm text-muted-foreground">{label}</div>
 }
 
 function TableSkeleton({ columns }: { columns: number }) {

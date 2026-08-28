@@ -50,7 +50,7 @@ def build_screening_memory(
             if candidate.current_title
             else "",
             f"Total experience: {candidate.total_experience_months} months",
-            f"Skills: {_clean(', '.join(item.skill for item in candidate.skills[:8]))}"
+            f"Skills: {_clean(', '.join(f'{item.skill} ({item.months} months)' for item in candidate.skills[:8]))}"
             if candidate.skills
             else "",
         )
@@ -69,11 +69,17 @@ def build_screening_memory(
 
     job_facts = [
         f"Role: {_clean(job.role_title)}",
+        f"Minimum total experience: {job.min_total_experience_months} months"
+        if job.min_total_experience_months
+        else "",
         f"Mandatory skills: {_clean(', '.join(job.mandatory_skills[:8]))}"
         if job.mandatory_skills
         else "",
         f"Preferred skills: {_clean(', '.join(job.preferred_skills[:8]))}"
         if job.preferred_skills
+        else "",
+        f"Required domains: {_clean(', '.join(job.required_domains[:8]))}"
+        if job.required_domains
         else "",
     ]
     drawers.append(
@@ -129,11 +135,58 @@ def build_screening_memory(
                 content=(
                     f"Recommendation: {response.recommendation.value}; "
                     f"final score: {response.scores.final_score:.1f}; "
-                    f"hard fail: {'yes' if response.hard_fail else 'no'}"
+                    f"grade: {response.grade}; "
+                    f"hard fail: {'yes' if response.hard_fail else 'no'}; "
+                    f"next action: {response.next_action}"
                 ),
                 source="screening rubric",
             )
         )
+        drawers.append(
+            MemoryDrawer(
+                wing="screening",
+                hall="hall_decision",
+                room="score_breakdown",
+                content=(
+                    f"Mandatory fit: {response.scores.mandatory_fit:.3f}; "
+                    f"experience depth: {response.scores.experience_depth:.3f}; "
+                    f"skill match: {response.scores.skill_match:.3f}; "
+                    f"domain relevance: {response.scores.domain_relevance:.3f}; "
+                    f"recency: {response.scores.recency:.3f}; "
+                    f"evidence confidence: {response.scores.evidence_confidence:.3f}; "
+                    f"final score: {response.scores.final_score:.1f}"
+                ),
+                source="screening rubric",
+            )
+        )
+        if response.explanation:
+            drawers.append(
+                MemoryDrawer(
+                    wing="screening",
+                    hall="hall_decision",
+                    room="explanation",
+                    content=_clean(response.explanation),
+                    source="screening rubric",
+                )
+            )
+        for rule in response.rule_results:
+            evidence = " ".join(
+                _clean(item.snippet) for item in rule.evidence[:2] if _clean(item.snippet)
+            )
+            evidence_text = f" Evidence: {evidence}" if evidence else ""
+            drawers.append(
+                MemoryDrawer(
+                    wing="screening",
+                    hall="hall_decision",
+                    room=f"rule:{_clean(rule.rule_id).lower()}",
+                    content=(
+                        f"Rule {rule.rule_id}: {'passed' if rule.passed else 'failed'}; "
+                        f"severity: {rule.severity.value}; {_clean(rule.message)}"
+                        f"{evidence_text}"
+                    ),
+                    source="screening rubric",
+                )
+            )
 
     return drawers
 
